@@ -28,7 +28,7 @@ unknown-argument = "error"
 invalid-argument-type = "error"
 
 # Additional rules for stricter type checking
-unused-variable = "warning"
+unused-variable = "warn"
 unbound-variable = "error"
 possibly-unbound = "error"
 
