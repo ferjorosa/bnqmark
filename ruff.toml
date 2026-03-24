@@ -1,0 +1,37 @@
+line-length = 88
+indent-width = 4
+
+[format]
+# Enable reformatting of code snippets in docstrings.
+docstring-code-format = true
+
+[lint]
+select = [
+    "B",  # flake8-bugbear
+    "C",  # flake8-comprehensions
+    "D",  # pydocstyle
+    "D213",  # docstring starts on the 2nd line
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "I",  # isort
+    "W",  # pycodestyle warnings
+    "UP",  # pyupgrade - modernize Python code
+    "N",  # pep8-naming
+    "SIM",  # flake8-simplify
+    "ARG",  # unused arguments
+    "PTH",  # prefer pathlib over os.path
+]
+ignore = [
+    "D212",  # Incompatible with D213
+    "D203",  # Incompatible with D213 (one-blank-line-before-class)
+]
+task-tags = ["TODO", "todo"]
+
+[lint.pycodestyle]
+ignore-overlong-task-comments = true
+
+[lint.mccabe]
+max-complexity = 15
+
+[lint.pydocstyle]
+convention = "google"

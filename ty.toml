@@ -1,0 +1,36 @@
+[environment]
+python-version = "3.12"
+
+[src]
+include = ["src"]
+exclude = [
+    "**/__pycache__/**",
+    "docs/**",
+    "scripts/**",
+    "build/**",
+    "dist/**",
+    ".mypy_cache/**",
+    ".pytest_cache/**",
+]
+respect-ignore-files = true
+
+[terminal]
+output-format = "full"
+error-on-warning = false
+
+[rules]
+unresolved-reference = "error"
+invalid-assignment = "error"
+call-non-callable = "error"
+invalid-return-type = "error"
+missing-argument = "error"
+unknown-argument = "error"
+invalid-argument-type = "error"
+
+# Additional rules for stricter type checking
+unused-variable = "warning"
+unbound-variable = "error"
+possibly-unbound = "error"
+
+[analysis]
+respect-type-ignore-comments = false
