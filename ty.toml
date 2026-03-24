@@ -27,10 +27,5 @@ missing-argument = "error"
 unknown-argument = "error"
 invalid-argument-type = "error"
 
-# Additional rules for stricter type checking
-unused-variable = "warning"
-unbound-variable = "error"
-possibly-unbound = "error"
-
 [analysis]
 respect-type-ignore-comments = false

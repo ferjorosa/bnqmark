@@ -8,6 +8,7 @@ requires-python = ">=3.12.3"
 dependencies = [
     "torch>=2.0.0",
     "pgmpy>=1.0.0",
+    "matplotlib>=3.10.8",
 ]
 
 # Explicitly use CPU-only PyTorch to avoid pulling in CUDA dependencies (not needed)
@@ -24,7 +25,7 @@ torch = { index = "pytorch-cpu" }
 dev = [
     "pre-commit>=4.5.1",
     "ruff>=0.14.14",
-    "ty>=0.10.0",
+    "ty>=0.0.14",
 ]
 
 # Make the project a package
