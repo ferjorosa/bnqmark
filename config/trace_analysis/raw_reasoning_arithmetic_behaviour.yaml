@@ -1,0 +1,21 @@
+# Configuration for Arithmetic Behavior Trace Analysis
+
+# Runs to analyze
+run: 1
+
+# List of model names to analyze (must match model_name in experiments.yaml)
+models_to_analyze:
+  - "deepseek/deepseek-r1-0528"
+  - "thudm/glm-4.6"
+  - "moonshotai/kimi-k2-thinking"
+  - "qwen/qwen3-235b-a22b-thinking-2507"
+  - "google/gemini-2.5-pro-preview-05-06"
+  - "anthropic/claude-sonnet-4-5-thinking-20250501"
+
+# The LLM used to perform the trace analysis
+analysis_model:
+  model_name: "google/gemini-2.5-pro-preview-05-06"
+  reasoning_model: true
+  temperature: 1.0
+  reasoning_effort: "xhigh"
+  reasoning_summary: "detailed"
