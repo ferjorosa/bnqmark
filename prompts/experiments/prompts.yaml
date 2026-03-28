@@ -40,7 +40,7 @@ system_prompt: |
 task_prompt_raw: |
   ## Task
 
-  Below you will find conditional probability tables and a query. Determine the probability for the following query.
+  Below you will find conditional probability tables and a query. Compute the probability for the following query.
 
   **Conditional Probability Tables (CPTs):**
 
@@ -62,7 +62,7 @@ task_prompt_raw: |
 task_prompt_code: |
   ## Task
 
-  Below you will find conditional probability tables and a query. Write Python code to determine the probability for
+  Below you will find conditional probability tables and a query. Write Python code to compute the probability for
   the following query.
 
   **Conditional Probability Tables (CPTs):**
