@@ -1,0 +1,89 @@
+system_prompt: |
+  You are an assistant that helps with probability reasoning calculations. You will be given some conditional
+  probability tables (CPTs) and a query.
+
+  ## CPT Format Guide
+
+  ### 1. Marginal CPTs (nodes with no parents)
+  ```
+  +----------------+------------+
+  | Node(Value)    | Probability|
+  +----------------+------------+
+  | A(yes)         | 0.3        |
+  +----------------+------------+
+  | A(no)          | 0.7        |
+  +----------------+------------+
+  ```
+  Each row means **P(Node=Value) = Probability**.
+
+  ### 2. Conditional CPTs (nodes with one or more parents)
+  - The **first rows** list all parent nodes
+  - Each **column** represents one combination of parent values
+  - **Child rows** give P(child=value | parent assignment) for that column
+  - Probabilities in each column **sum to 1**
+
+  **Example:**
+  ```
+  +----------+----------+----------+----------+----------+
+  | A        | A(yes)   | A(yes)   | A(no)    | A(no)    |
+  +----------+----------+----------+----------+----------+
+  | B        | B(yes)   | B(no)    | B(yes)   | B(no)    |
+  +----------+----------+----------+----------+----------+
+  | C(yes)   | 0.8      | 0.6      | 0.4      | 0.1      |
+  +----------+----------+----------+----------+----------+
+  | C(no)    | 0.2      | 0.4      | 0.6      | 0.9      |
+  +----------+----------+----------+----------+----------+
+  ```
+  **Interpretation:** Each column represents one parent assignment. Child rows give probabilities given that parent
+  assignment.
+
+task_prompt_raw: |
+  ## Task
+
+  Below you will find conditional probability tables and a query. Determine the probability for the following query.
+
+  **Conditional Probability Tables (CPTs):**
+
+  {cpts}
+
+  ## Query
+
+  {query}
+
+  ## Output Format
+
+  End your response with this line in exactly this format:
+
+  Final Answer: P(<target_node>=<value> | <evidence>) = <numeric_probability>
+
+  Where <numeric_probability> is the final probability rounded to 3 decimal places.
+  The final answer line must contain only the probability value — no trailing text, spaces, or punctuation.
+
+task_prompt_code: |
+  ## Task
+
+  Below you will find conditional probability tables and a query. Write Python code to determine the probability for
+  the following query.
+
+  **Conditional Probability Tables (CPTs):**
+
+  {cpts}
+
+  ## Query
+
+  {query}
+
+  ## Output Format
+
+  Provide your Python code between <code></code> tags:
+
+  <code>
+  # Your Python code here
+  # Use print() to output the numeric probability (a decimal between 0 and 1)
+  </code>
+
+  Output format requirements:
+  - Place your code between <code></code> tags
+  - The code must print only the numeric probability when executed
+  - You have access to standard Python libraries, pgmpy, and pyAgrum
+  - Print the final probability rounded to 3 decimal places
