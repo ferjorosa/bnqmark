@@ -11,6 +11,7 @@ dependencies = [
     "matplotlib>=3.10.8",
     "langchain>=1.2.13",
     "langchain-openai>=1.1.12",
+    "pyarrow>=23.0.1",
 ]
 
 # Explicitly use CPU-only PyTorch to avoid pulling in CUDA dependencies (not needed)

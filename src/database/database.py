@@ -39,7 +39,7 @@ def init_db(db_path: str | None = None) -> str:
         # Default to a 'data' directory in the project
         data_dir = Path(__file__).parent.parent.parent / "data"
         data_dir.mkdir(exist_ok=True)
-        db_path = str(data_dir / "experiments.db")
+        db_path = str(data_dir / "probabilistic_inference_llms.db")
 
     _db_path = db_path
 
