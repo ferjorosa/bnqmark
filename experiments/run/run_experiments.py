@@ -15,9 +15,21 @@ Steps:
 """
 
 import json
+import sys
 from pathlib import Path
 
 import pandas as pd
+from dotenv import get_key
+
+# Get API key from .env file
+openrouter_api_key = get_key(".env", "OPENROUTER_API_KEY")
+if not openrouter_api_key:
+    raise RuntimeError("OPENROUTER_API_KEY not found in .env file")
+
+# Add project root to Python path for imports
+_repo_root = Path(__file__).resolve().parents[3]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
 
 from src.database.discrete_experiments_db import initialize_discrete_experiments_db
 from src.experiment.core import ExperimentType
@@ -90,6 +102,11 @@ def main():
     print("Discrete Probabilistic Reasoning Experiment Execution")
     print("=" * 60)
     print()
+
+    # Check API key was loaded
+    if not openrouter_api_key:
+        print("Error: OPENROUTER_API_KEY not found in .env file")
+        return
 
     # Initialize database table
     print("Initializing discrete_experiments database table (if needed)...")
@@ -167,6 +184,7 @@ def main():
                 task_prompt=task_prompt,
                 system_prompt=system_prompt,
                 reasoning_model=reasoning_model,
+                openrouter_api_key=openrouter_api_key,
                 temperature=temperature,
                 reasoning_effort=reasoning_effort,
                 reasoning_summary=reasoning_summary,
@@ -185,6 +203,7 @@ def main():
             #     task_prompt=task_prompt,
             #     system_prompt=system_prompt,
             #     reasoning_model=reasoning_model,
+            #     openrouter_api_key=openrouter_api_key,
             #     temperature=temperature,
             #     reasoning_effort=reasoning_effort,
             #     reasoning_summary=reasoning_summary,

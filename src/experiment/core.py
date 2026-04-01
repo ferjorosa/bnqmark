@@ -12,7 +12,6 @@ from enum import Enum
 from typing import Any
 
 import pandas as pd
-from langchain_core.prompts import PromptTemplate
 from pgmpy.models import DiscreteBayesianNetwork
 
 from src.database.discrete_experiments_db import (
@@ -24,7 +23,7 @@ from src.queries.formatting.format_query_str import (
     format_probability_query,
 )
 from src.utils.error_utils import is_token_limit_error
-from src.utils.llm_utils import run_llm_call
+from src.utils.llm import run_llm_call
 from src.utils.tiktoken_utils import count_input_tokens
 
 logger = logging.getLogger(__name__)
@@ -37,14 +36,14 @@ class ExperimentType(str, Enum):
     CODE_GENERATION = "code_generation"
 
 
-def _prepare_prompt_template(
+def _prepare_prompt(
     system_prompt: str,
     task_prompt: str,
     cpts_str: str,
     query_str: str,
-) -> tuple[PromptTemplate, dict, str]:
+) -> str:
     """
-    Prepare the prompt template, parameters, and formatted prompt.
+    Prepare the full prompt string by substituting placeholders.
 
     Args:
         system_prompt: System prompt string (for all experiment types).
@@ -55,27 +54,17 @@ def _prepare_prompt_template(
         query_str: Formatted query string.
 
     Returns:
-        Tuple (full_prompt_template, parameters, full_prompt):
-          - full_prompt_template: PromptTemplate object
-          - parameters: dict with cpts and query parameters
-          - full_prompt: formatted prompt string
+        Full formatted prompt string.
     """
     # Combine system and task prompts into a single prompt template
     combined_prompt = f"{system_prompt}\n\n{task_prompt}"
 
-    # Create PromptTemplate with placeholders for cpts and query
-    full_prompt_template = PromptTemplate.from_template(combined_prompt)
+    # Substitute placeholders directly
+    full_prompt = combined_prompt.replace("{cpts}", cpts_str).replace(
+        "{query}", query_str
+    )
 
-    # Prepare parameters for the prompt template
-    parameters = {
-        "cpts": cpts_str,
-        "query": query_str,
-    }
-
-    # Format the full prompt for storage
-    full_prompt = full_prompt_template.format(**parameters)
-
-    return full_prompt_template, parameters, full_prompt
+    return full_prompt
 
 
 def run_single_query(
@@ -91,7 +80,7 @@ def run_single_query(
     reasoning_effort: str | None,
     reasoning_summary: str | None,
     max_tokens: int | None,
-    openrouter_api_key: str | None,
+    openrouter_api_key: str,
 ) -> dict[str, Any]:
     """
     Process a single query: run LLM call and insert to database.
@@ -143,8 +132,8 @@ def run_single_query(
         # Capture timestamp before running the query
         started_at = datetime.now(UTC).isoformat()
 
-        # Prepare prompt template for potential error handling
-        full_prompt_template, parameters, full_prompt = _prepare_prompt_template(
+        # Prepare prompt for potential error handling
+        full_prompt = _prepare_prompt(
             system_prompt=system_prompt,
             task_prompt=task_prompt,
             cpts_str=cpts_str,
@@ -171,8 +160,6 @@ def run_single_query(
                 response_reasoning_summary,
                 response_metadata,
             ) = _run_single_discrete_experiment(
-                full_prompt_template=full_prompt_template,
-                parameters=parameters,
                 full_prompt=full_prompt,
                 query_str=query_str,
                 model_name=model_name,
@@ -196,7 +183,7 @@ def run_single_query(
             # Check if this is specifically a token limit error
             if is_token_limit_error(e):
                 # Estimate input tokens using tiktoken
-                input_tokens = count_input_tokens(full_prompt_template, parameters)
+                input_tokens = count_input_tokens(full_prompt)
                 logger.warning(
                     f"Input exceeds context length for query {query_uuid[:8]}: "
                     f"estimated {input_tokens} input tokens"
@@ -262,37 +249,33 @@ def run_single_query(
 
 
 def _run_single_discrete_experiment(
-    full_prompt_template: PromptTemplate,
-    parameters: dict,
     full_prompt: str,
     query_str: str,
     model_name: str,
     run: int,
+    openrouter_api_key: str,
     temperature: float = 0.0,
     reasoning_effort: str | None = None,
     reasoning_summary: str | None = None,
     max_tokens: int | None = None,
-    openrouter_api_key: str | None = None,
 ) -> tuple[str, float | None, str, dict | None, str | None, dict | None]:
     """
     Run a single LLM call for a probabilistic reasoning query.
 
-    Calls the LLM with the prompt template and parameters.
+    Calls the LLM with the full prompt string.
 
     Args:
-        full_prompt_template: PromptTemplate with placeholders for cpts and query.
-        parameters: Dict with cpts and query parameters.
         full_prompt: Complete formatted prompt string.
         query_str: Formatted query string (for logging).
         model_name: Model name for the LLM (e.g., "openai/gpt-4o").
         run: Run number for this experiment.
         temperature: LLM temperature. Defaults to 0.0.
+        openrouter_api_key: OpenRouter API key.
         reasoning_effort: Reasoning effort. Values: "xhigh", "high",
             "medium", "low", "minimal", "none". Defaults to None.
         reasoning_summary: Reasoning summary. Values: "auto", "concise",
             "detailed". Defaults to None.
         max_tokens: Max tokens for the response. Defaults to None.
-        openrouter_api_key: OpenRouter API key. Defaults to None (will use env var).
 
     Returns:
         Tuple: (
@@ -316,12 +299,10 @@ def _run_single_discrete_experiment(
         response_reasoning_summary,
         response_metadata,
     ) = run_llm_call(
-        prompt_template=full_prompt_template,
+        prompt=full_prompt,
         model_name=model_name,
-        parameters=parameters,
-        output_parser=None,
-        temperature=temperature,
         openrouter_api_key=openrouter_api_key,
+        temperature=temperature,
         max_tokens=max_tokens,
         reasoning_effort=reasoning_effort,
         reasoning_summary=reasoning_summary,

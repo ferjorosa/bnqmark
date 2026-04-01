@@ -26,10 +26,16 @@ and database storage.
 """
 
 import pickle
+import sys
 import uuid
 from pathlib import Path
 
 import pandas as pd
+
+# Add project root to Python path for imports
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
 
 from src.bn import generate_bayesian_networks_and_metadata
 from src.bn.analysis import compute_average_markov_blanket_size, num_edges

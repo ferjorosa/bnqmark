@@ -9,9 +9,11 @@ dependencies = [
     "torch>=2.0.0",
     "pgmpy>=1.0.0",
     "matplotlib>=3.10.8",
-    "langchain>=1.2.13",
-    "langchain-openai>=1.1.12",
     "pyarrow>=23.0.1",
+    "python-dotenv>=1.2.2",
+    "tiktoken>=0.12.0",
+    "pydantic>=2.12.5",
+    "openai>=2.30.0",
 ]
 
 # Explicitly use CPU-only PyTorch to avoid pulling in CUDA dependencies (not needed)

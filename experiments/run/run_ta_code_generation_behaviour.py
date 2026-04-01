@@ -2,7 +2,18 @@
 """Code Generation Behaviour Trace Analysis Execution Script."""
 
 import logging
+import sys
 from pathlib import Path
+
+from dotenv import get_key
+
+# Get API key from .env file
+openrouter_api_key = get_key(".env", "OPENROUTER_API_KEY")
+
+# Add project root to Python path for imports
+_repo_root = Path(__file__).resolve().parents[3]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
 
 from src.database.discrete_code_generation_behaviour_analysis_db import (
     get_existing_code_generation_behaviour_analysis_identifiers,
@@ -23,6 +34,11 @@ logger = logging.getLogger(__name__)
 
 def main():
     """Run the code generation behaviour trace analysis."""
+    # Check API key was loaded
+    if not openrouter_api_key:
+        logger.error("OPENROUTER_API_KEY not found in .env file")
+        return
+
     repo_root = Path(__file__).resolve().parents[3]
     config_path = (
         repo_root / "config" / "trace_analysis" / "code_generation_behaviour.yaml"
@@ -72,6 +88,7 @@ def main():
             analysis_type=AnalysisType.CODE_GENERATION_BEHAVIOUR,
             system_prompt=system_prompt,
             task_prompt=task_prompt,
+            openrouter_api_key=openrouter_api_key,
             temperature=analyzer_config["temperature"],
             reasoning_effort=reasoning_effort,
             reasoning_summary=reasoning_summary,
