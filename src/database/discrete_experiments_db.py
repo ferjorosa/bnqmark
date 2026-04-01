@@ -11,6 +11,7 @@ import json
 import logging
 
 from src.database.database import (
+    execute_many,
     execute_query,
     query_db,
 )
@@ -260,3 +261,89 @@ def insert_experiment_row(
             f"Inserted: {query_uuid}, naming_strategy {naming_strategy}, "
             f"run {run}, experiment_type {experiment_type}, model {model_name}"
         )
+
+
+def insert_experiment_batch(experiment_rows: list[dict], debug: bool = False) -> int:
+    """
+    Insert multiple experiment rows in a single transaction.
+
+    Args:
+        experiment_rows: List of dictionaries containing experiment data
+        debug: Flag to enable debug output
+
+    Returns:
+        Number of rows inserted
+    """
+    if not experiment_rows:
+        return 0
+
+    query = f"""
+        INSERT INTO {TABLE_NAME} (
+            query_uuid, naming_strategy, run, experiment_type, full_prompt,
+            response, response_reasoning_summary, response_metadata,
+            model_name, reasoning_model, openai_reasoning_effort,
+            openai_reasoning_summary, bedrock_max_reasoning_tokens,
+            bedrock_max_tokens, input_tokens, output_tokens, usage_metadata,
+            temperature, llm_probability, code_followed_formatting_instructions,
+            code_pgmpy_library_fix, code_exception_type, code_exception_message,
+            started_at, finished_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?)
+    """
+
+    params_list = []
+    for row in experiment_rows:
+        # Convert metadata dicts to JSON strings for storage
+        response_metadata_json = (
+            json.dumps(row.get("response_metadata"))
+            if row.get("response_metadata")
+            else None
+        )
+        usage_metadata_json = (
+            json.dumps(row.get("usage_metadata")) if row.get("usage_metadata") else None
+        )
+
+        # Convert timestamps to ISO format strings for SQLite compatibility
+        started_at = row["started_at"]
+        finished_at = row["finished_at"]
+        if hasattr(started_at, "isoformat"):
+            started_at = started_at.isoformat()
+        if hasattr(finished_at, "isoformat"):
+            finished_at = finished_at.isoformat()
+
+        params = (
+            row["query_uuid"],
+            row["naming_strategy"],
+            row["run"],
+            row["experiment_type"],
+            row["full_prompt"],
+            row["response"],
+            row.get("response_reasoning_summary"),
+            response_metadata_json,
+            row["model_name"],
+            row["reasoning_model"],
+            row.get("openai_reasoning_effort"),
+            row.get("openai_reasoning_summary"),
+            row.get("bedrock_max_reasoning_tokens"),
+            row.get("bedrock_max_tokens"),
+            row.get("input_tokens"),
+            row.get("output_tokens"),
+            usage_metadata_json,
+            row["temperature"],
+            row.get("llm_probability"),
+            row.get("code_followed_formatting_instructions"),
+            row.get("code_pgmpy_library_fix"),
+            row.get("code_exception_type"),
+            row.get("code_exception_message"),
+            started_at,
+            finished_at,
+        )
+        params_list.append(params)
+
+    execute_many(query, params_list)
+
+    if debug:
+        print(f"Batch inserted {len(experiment_rows)} experiment rows")
+
+    return len(experiment_rows)
