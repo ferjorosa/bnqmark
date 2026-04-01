@@ -30,11 +30,11 @@ def run_discrete_queries_sequential(
     task_prompt: str,
     system_prompt: str,
     reasoning_model: bool,
+    openrouter_api_key: str,
     temperature: float = 0.0,
     reasoning_effort: str | None = None,
     reasoning_summary: str | None = None,
     max_tokens: int | None = None,
-    openrouter_api_key: str | None = None,
     verbose: bool = False,
 ) -> None:
     """
@@ -54,14 +54,13 @@ def run_discrete_queries_sequential(
             For CODE_GENERATION: prompt_base_code (asks for Python code).
         system_prompt: LLM system prompt (for all types).
         reasoning_model: If this is a reasoning model.
+        openrouter_api_key: OpenRouter API key (required).
         temperature: LLM temperature parameter.
         reasoning_effort: Reasoning effort, one of "low", "medium", "high",
             or None. Defaults to None.
         reasoning_summary: Reasoning summary, one of "auto", "concise",
             "detailed", or None. Defaults to None.
         max_tokens: Max tokens for the response. Defaults to None.
-        openrouter_api_key: OpenRouter API key. If not provided, will be read
-            from OPENROUTER_API_KEY environment variable.
         verbose: Print per-query progress if True.
     """
     # Create mapping from (bn_uuid, naming_strategy) to BN objects

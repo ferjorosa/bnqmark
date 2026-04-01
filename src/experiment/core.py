@@ -80,7 +80,7 @@ def run_single_query(
     reasoning_effort: str | None,
     reasoning_summary: str | None,
     max_tokens: int | None,
-    openrouter_api_key: str | None,
+    openrouter_api_key: str,
 ) -> dict[str, Any]:
     """
     Process a single query: run LLM call and insert to database.

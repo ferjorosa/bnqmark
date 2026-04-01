@@ -160,7 +160,7 @@ def run_batch_parallel(
     reasoning_effort: str | None,
     reasoning_summary: str | None,
     max_tokens: int | None,
-    openrouter_api_key: str | None,
+    openrouter_api_key: str,
     max_workers: int = 5,
 ) -> list[dict[str, Any]]:
     """
@@ -182,8 +182,7 @@ def run_batch_parallel(
         reasoning_effort: Reasoning effort level.
         reasoning_summary: Reasoning summary level.
         max_tokens: Maximum tokens for the response.
-        openrouter_api_key: OpenRouter API key. If not provided, will be read
-                            from OPENROUTER_API_KEY environment variable.
+        openrouter_api_key: OpenRouter API key (required).
         max_workers: Maximum number of parallel workers.
 
     Returns:

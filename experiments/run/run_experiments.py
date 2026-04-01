@@ -23,6 +23,8 @@ from dotenv import get_key
 
 # Get API key from .env file
 openrouter_api_key = get_key(".env", "OPENROUTER_API_KEY")
+if not openrouter_api_key:
+    raise RuntimeError("OPENROUTER_API_KEY not found in .env file")
 
 # Add project root to Python path for imports
 _repo_root = Path(__file__).resolve().parents[3]
@@ -201,6 +203,7 @@ def main():
             #     task_prompt=task_prompt,
             #     system_prompt=system_prompt,
             #     reasoning_model=reasoning_model,
+            #     openrouter_api_key=openrouter_api_key,
             #     temperature=temperature,
             #     reasoning_effort=reasoning_effort,
             #     reasoning_summary=reasoning_summary,
