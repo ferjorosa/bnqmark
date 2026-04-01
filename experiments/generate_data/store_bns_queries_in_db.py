@@ -8,9 +8,15 @@ This is not mandatory to run as experiments use the data directly from the parqu
 files, but it helps keeping the database consistent.
 """
 
+import sys
 from pathlib import Path
 
 import pandas as pd
+
+# Add project root to Python path for imports
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
 
 from src.database.discrete_bn_db import (
     get_existing_bn_identifiers,

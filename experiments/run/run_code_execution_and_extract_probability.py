@@ -12,6 +12,13 @@ and updates the 'llm_probability' if execution is successful.
 """
 
 import logging
+import sys
+from pathlib import Path
+
+# Add project root to Python path for imports
+_repo_root = Path(__file__).resolve().parents[3]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
 
 from src.database.database import execute_query, query_db
 from src.database.discrete_experiments_db import FULL_TABLE_NAME

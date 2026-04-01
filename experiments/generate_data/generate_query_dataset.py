@@ -39,6 +39,7 @@ Run plot_query_dataset.py to generate visualization plots.
 
 import json
 import pickle
+import sys
 import uuid
 from itertools import product
 from pathlib import Path
@@ -46,6 +47,11 @@ from typing import Any
 
 import numpy as np
 import pandas as pd
+
+# Add project root to Python path for imports
+_repo_root = Path(__file__).resolve().parents[2]
+if str(_repo_root) not in sys.path:
+    sys.path.insert(0, str(_repo_root))
 
 from src.queries import (
     QuerySpec,
