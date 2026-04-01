@@ -1,4 +1,5 @@
-"""Simple Pydantic output parser - replacement for LangChain's PydanticOutputParser.
+"""
+Simple Pydantic output parser - replacement for LangChain's PydanticOutputParser.
 
 This module provides a lightweight alternative to LangChain's PydanticOutputParser
 for parsing LLM responses into Pydantic models.
@@ -6,7 +7,7 @@ for parsing LLM responses into Pydantic models.
 
 import json
 import re
-from typing import TypeVar, Type
+from typing import TypeVar
 
 from pydantic import BaseModel, ValidationError
 
@@ -14,14 +15,16 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class PydanticOutputParser:
-    """Parse LLM responses into Pydantic models.
+    """
+    Parse LLM responses into Pydantic models.
 
     This is a lightweight replacement for LangChain's PydanticOutputParser
     that doesn't require the full LangChain dependency.
     """
 
-    def __init__(self, pydantic_object: Type[T]):
-        """Initialize with a Pydantic model class.
+    def __init__(self, pydantic_object: type[T]):
+        """
+        Initialize with a Pydantic model class.
 
         Args:
             pydantic_object: The Pydantic model class to parse into.
@@ -29,7 +32,8 @@ class PydanticOutputParser:
         self.pydantic_object = pydantic_object
 
     def get_format_instructions(self) -> str:
-        """Generate format instructions from the Pydantic model schema.
+        """
+        Generate format instructions from the Pydantic model schema.
 
         Returns:
             A string containing JSON format instructions for the LLM.
@@ -47,7 +51,8 @@ class PydanticOutputParser:
         )
 
     def parse(self, text: str) -> T:
-        """Parse the LLM response text into the Pydantic model.
+        """
+        Parse the LLM response text into the Pydantic model.
 
         Args:
             text: The raw text response from the LLM.
@@ -83,13 +88,11 @@ class PydanticOutputParser:
             return self.pydantic_object.model_validate(data)
         except json.JSONDecodeError as e:
             raise ValueError(
-                f"Invalid JSON in response: {e}\n"
-                f"Response preview: {text[:500]}..."
+                f"Invalid JSON in response: {e}\nResponse preview: {text[:500]}..."
             ) from e
         except ValidationError as e:
             raise ValueError(
-                f"Response doesn't match schema: {e}\n"
-                f"Response preview: {text[:500]}..."
+                f"Response doesn't match schema: {e}\nResponse preview: {text[:500]}..."
             ) from e
 
     @property

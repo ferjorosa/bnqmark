@@ -1,4 +1,5 @@
-"""Demo script showing how to use PydanticOutputParser for structured LLM outputs.
+"""
+Demo script showing how to use PydanticOutputParser for structured LLM outputs.
 
 This example demonstrates:
 1. How format instructions are generated from a Pydantic model
@@ -80,10 +81,16 @@ def demo_parse_response() -> None:
 
     print("Parsed Pydantic model:")
     print(f"  classification.algorithm_type: {result.classification.algorithm_type}")
-    print(f"  classification.confidence_score: {result.classification.confidence_score}")
+    print(
+        f"  classification.confidence_score: {result.classification.confidence_score}"
+    )
     print(f"  barren_nodes.is_present: {result.barren_nodes.is_present}")
-    print(f"  conditional_independence.is_present: {result.conditional_independence.is_present}")
-    print(f"  algebraic_simplification.is_present: {result.algebraic_simplification.is_present}")
+    print(
+        f"  conditional_independence.is_present: {result.conditional_independence.is_present}"
+    )
+    print(
+        f"  algebraic_simplification.is_present: {result.algebraic_simplification.is_present}"
+    )
     print()
 
 
@@ -95,9 +102,7 @@ def demo_full_prompt_example() -> None:
         "You are an expert in probabilistic inference algorithms. "
         "Analyze the given reasoning trace and classify the inference strategy used."
     )
-    task_prompt = (
-        "Analyze this inference trace:\n\n{trace}\n\n{format_instructions}"
-    )
+    task_prompt = "Analyze this inference trace:\n\n{trace}\n\n{format_instructions}"
 
     example_trace = """1. First, I need to compute P(A|B=true)
 2. Looking at the Bayes net, variables C and D are not ancestors of A, so I can ignore them

@@ -1,4 +1,5 @@
-"""Detailed response parser for OpenRouter models using message.reasoning_details format.
+"""
+Detailed response parser for OpenRouter models using message.reasoning_details format.
 
 Handles parsing of models that return reasoning in the structured message.reasoning_details format:
 - Google Gemini-3.1 (and other Gemini models)
@@ -8,7 +9,9 @@ Only "reasoning.text" entries are extracted; encrypted entries are ignored.
 """
 
 
-def parse_detailed_response(response) -> tuple[str, str | None, dict | None, dict | None]:
+def parse_detailed_response(
+    response,
+) -> tuple[str, str | None, dict | None, dict | None]:
     """
     Parse response for models using the detailed message.reasoning_details format.
 
@@ -61,7 +64,9 @@ def parse_detailed_response(response) -> tuple[str, str | None, dict | None, dic
                     reasoning_parts.append(text)
 
     # Concatenate all reasoning parts in order with double newlines
-    response_reasoning_summary = "\n\n".join(reasoning_parts) if reasoning_parts else None
+    response_reasoning_summary = (
+        "\n\n".join(reasoning_parts) if reasoning_parts else None
+    )
 
     # Parse usage metadata
     usage_metadata = _extract_usage_metadata(response)
@@ -69,7 +74,12 @@ def parse_detailed_response(response) -> tuple[str, str | None, dict | None, dic
     # Parse response metadata
     response_metadata = _extract_response_metadata(response)
 
-    return response_content, response_reasoning_summary, usage_metadata, response_metadata
+    return (
+        response_content,
+        response_reasoning_summary,
+        usage_metadata,
+        response_metadata,
+    )
 
 
 def _extract_usage_metadata(response) -> dict | None:
@@ -86,7 +96,9 @@ def _extract_usage_metadata(response) -> dict | None:
     # Add reasoning tokens from completion_tokens_details
     completion_details = getattr(response.usage, "completion_tokens_details", None)
     if completion_details:
-        usage_metadata["reasoning_tokens"] = getattr(completion_details, "reasoning_tokens", None)
+        usage_metadata["reasoning_tokens"] = getattr(
+            completion_details, "reasoning_tokens", None
+        )
 
     # Add cached tokens from prompt_tokens_details
     prompt_details = getattr(response.usage, "prompt_tokens_details", None)
@@ -97,11 +109,17 @@ def _extract_usage_metadata(response) -> dict | None:
     cost_details = getattr(response.usage, "cost_details", None)
     if cost_details and isinstance(cost_details, dict):
         if "upstream_inference_cost" in cost_details:
-            usage_metadata["upstream_inference_cost"] = cost_details["upstream_inference_cost"]
+            usage_metadata["upstream_inference_cost"] = cost_details[
+                "upstream_inference_cost"
+            ]
         if "upstream_inference_prompt_cost" in cost_details:
-            usage_metadata["upstream_inference_prompt_cost"] = cost_details["upstream_inference_prompt_cost"]
+            usage_metadata["upstream_inference_prompt_cost"] = cost_details[
+                "upstream_inference_prompt_cost"
+            ]
         if "upstream_inference_completions_cost" in cost_details:
-            usage_metadata["upstream_inference_completions_cost"] = cost_details["upstream_inference_completions_cost"]
+            usage_metadata["upstream_inference_completions_cost"] = cost_details[
+                "upstream_inference_completions_cost"
+            ]
 
     return usage_metadata
 

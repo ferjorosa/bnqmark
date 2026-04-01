@@ -97,8 +97,13 @@ def run_llm_call(
     response = client.chat.completions.create(**request_params)
 
     # Parse the response
-    response_content, response_reasoning_summary, usage_metadata, response_metadata = parse_basic_response(
-        response
+    response_content, response_reasoning_summary, usage_metadata, response_metadata = (
+        parse_basic_response(response)
     )
 
-    return response_content, usage_metadata, response_reasoning_summary, response_metadata
+    return (
+        response_content,
+        usage_metadata,
+        response_reasoning_summary,
+        response_metadata,
+    )

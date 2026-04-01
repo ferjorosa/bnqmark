@@ -49,14 +49,17 @@ def test_with_provider(provider_preferences: list[str]) -> None:
         temperature=1.0,
         reasoning_effort=REASONING_EFFORT,
         reasoning_summary=REASONING_SUMMARY,
-
     )
 
     print(f"Response: {content}")
     print(f"Usage: {usage}")
 
     if reasoning:
-        print(f"\nReasoning:\n{reasoning[:500]}..." if len(reasoning) > 500 else f"\nReasoning:\n{reasoning}")
+        print(
+            f"\nReasoning:\n{reasoning[:500]}..."
+            if len(reasoning) > 500
+            else f"\nReasoning:\n{reasoning}"
+        )
 
     # Check response metadata for provider info
     if metadata:

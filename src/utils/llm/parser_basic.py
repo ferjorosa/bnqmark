@@ -1,4 +1,5 @@
-"""Basic response parser for OpenRouter models using message.reasoning format.
+"""
+Basic response parser for OpenRouter models using message.reasoning format.
 
 Handles parsing of models that return reasoning in the simple message.reasoning format:
 - OpenAI GPT-5
@@ -50,7 +51,9 @@ def parse_basic_response(response) -> tuple[str, str | None, dict | None, dict |
                         reasoning_parts.append(text)
                 else:
                     reasoning_parts.append(str(item))
-            response_reasoning_summary = "\n\n".join(reasoning_parts) if reasoning_parts else None
+            response_reasoning_summary = (
+                "\n\n".join(reasoning_parts) if reasoning_parts else None
+            )
 
     # Parse usage metadata
     usage_metadata = _extract_usage_metadata(response)
@@ -58,7 +61,12 @@ def parse_basic_response(response) -> tuple[str, str | None, dict | None, dict |
     # Parse response metadata
     response_metadata = _extract_response_metadata(response)
 
-    return response_content, response_reasoning_summary, usage_metadata, response_metadata
+    return (
+        response_content,
+        response_reasoning_summary,
+        usage_metadata,
+        response_metadata,
+    )
 
 
 def _extract_usage_metadata(response) -> dict | None:
@@ -75,7 +83,9 @@ def _extract_usage_metadata(response) -> dict | None:
     # Add reasoning tokens from completion_tokens_details
     completion_details = getattr(response.usage, "completion_tokens_details", None)
     if completion_details:
-        usage_metadata["reasoning_tokens"] = getattr(completion_details, "reasoning_tokens", None)
+        usage_metadata["reasoning_tokens"] = getattr(
+            completion_details, "reasoning_tokens", None
+        )
 
     # Add cached tokens from prompt_tokens_details
     prompt_details = getattr(response.usage, "prompt_tokens_details", None)
@@ -86,11 +96,17 @@ def _extract_usage_metadata(response) -> dict | None:
     cost_details = getattr(response.usage, "cost_details", None)
     if cost_details and isinstance(cost_details, dict):
         if "upstream_inference_cost" in cost_details:
-            usage_metadata["upstream_inference_cost"] = cost_details["upstream_inference_cost"]
+            usage_metadata["upstream_inference_cost"] = cost_details[
+                "upstream_inference_cost"
+            ]
         if "upstream_inference_prompt_cost" in cost_details:
-            usage_metadata["upstream_inference_prompt_cost"] = cost_details["upstream_inference_prompt_cost"]
+            usage_metadata["upstream_inference_prompt_cost"] = cost_details[
+                "upstream_inference_prompt_cost"
+            ]
         if "upstream_inference_completions_cost" in cost_details:
-            usage_metadata["upstream_inference_completions_cost"] = cost_details["upstream_inference_completions_cost"]
+            usage_metadata["upstream_inference_completions_cost"] = cost_details[
+                "upstream_inference_completions_cost"
+            ]
 
     return usage_metadata
 

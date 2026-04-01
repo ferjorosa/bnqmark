@@ -1,4 +1,5 @@
-"""LLM utilities using OpenAI library directly (no LangChain).
+"""
+LLM utilities using OpenAI library directly (no LangChain).
 
 Tuned for OpenRouter with direct API calls.
 """
