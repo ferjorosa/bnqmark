@@ -85,7 +85,7 @@ class PydanticOutputParser:
         # Parse JSON and validate against Pydantic model
         try:
             data = json.loads(text)
-            return self.pydantic_object.model_validate(data)
+            return self.pydantic_object.model_validate(data)  # ty: ignore
         except json.JSONDecodeError as e:
             raise ValueError(
                 f"Invalid JSON in response: {e}\nResponse preview: {text[:500]}..."

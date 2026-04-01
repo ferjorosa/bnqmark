@@ -1,5 +1,7 @@
 """Main LLM runner using OpenAI library directly."""
 
+from typing import Any
+
 from openai import OpenAI
 
 from .parser_basic import parse_basic_response
@@ -79,7 +81,7 @@ def run_llm_call(
         }
 
     # Build request parameters
-    request_params = {
+    request_params: dict[str, Any] = {
         "model": model_name,
         "messages": messages,
         "temperature": temperature,
