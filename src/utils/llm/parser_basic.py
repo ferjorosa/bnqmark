@@ -20,7 +20,8 @@ def parse_basic_response(response) -> tuple[str, str | None, dict | None, dict |
         response: The raw response object from the OpenAI client
 
     Returns:
-        Tuple of (response_content, response_reasoning_summary, usage_metadata, response_metadata)
+        Tuple of (response_content, response_reasoning_summary,
+        usage_metadata, response_metadata)
     """
     response_content = ""
     response_reasoning_summary = None

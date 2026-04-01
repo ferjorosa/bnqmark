@@ -1,10 +1,13 @@
 """
-Detailed response parser for OpenRouter models using message.reasoning_details format.
+Detailed response parser for OpenRouter models.
 
-Handles parsing of models that return reasoning in the structured message.reasoning_details format:
+Parses models that return reasoning in the structured
+message.reasoning_details format:
+
 - Google Gemini-3.1 (and other Gemini models)
 
-These models return reasoning as a list of typed objects with "reasoning.text" and "reasoning.encrypted" entries.
+These models return reasoning as a list of typed objects with
+"reasoning.text" and "reasoning.encrypted" entries.
 Only "reasoning.text" entries are extracted; encrypted entries are ignored.
 """
 
@@ -27,7 +30,8 @@ def parse_detailed_response(
         response: The raw response object from the OpenAI client
 
     Returns:
-        Tuple of (response_content, response_reasoning_summary, usage_metadata, response_metadata)
+        Tuple of (response_content, response_reasoning_summary,
+        usage_metadata, response_metadata)
     """
     response_content = ""
     reasoning_parts: list[str] = []

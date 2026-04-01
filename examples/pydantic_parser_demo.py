@@ -45,23 +45,28 @@ def demo_parse_response() -> None:
     mock_llm_response = """```json
 {
   "classification": {
-    "reasoning": "The trace shows the model systematically eliminating variables by multiplying factors and summing out non-query variables. This matches the definition of variable elimination.",
+    "reasoning": "The trace shows the model systematically eliminating variables "
+    "by multiplying factors and summing out non-query variables. "
+    "This matches the definition of variable elimination.",
     "algorithm_type": "variable_elimination",
     "confidence_score": 4,
     "deviation_details": null
   },
   "barren_nodes": {
-    "reasoning": "The model explicitly mentions ignoring nodes C and D as they are not ancestors of the query variable.",
+    "reasoning": "The model explicitly mentions ignoring nodes C and D "
+    "as they are not ancestors of the query variable.",
     "is_present": true,
     "confidence_score": 5
   },
   "conditional_independence": {
-    "reasoning": "The model uses d-separation to determine that X is independent of Y given Z.",
+    "reasoning": "The model uses d-separation to determine that X "
+    "is independent of Y given Z.",
     "is_present": true,
     "confidence_score": 4
   },
   "algebraic_simplification": {
-    "reasoning": "The model performs symbolic simplification by canceling terms before numerical evaluation.",
+    "reasoning": "The model performs symbolic simplification by "
+    "canceling terms before numerical evaluation.",
     "is_present": true,
     "confidence_score": 3
   }
@@ -86,10 +91,12 @@ def demo_parse_response() -> None:
     )
     print(f"  barren_nodes.is_present: {result.barren_nodes.is_present}")
     print(
-        f"  conditional_independence.is_present: {result.conditional_independence.is_present}"
+        f"  conditional_independence.is_present: "
+        f"{result.conditional_independence.is_present}"
     )
     print(
-        f"  algebraic_simplification.is_present: {result.algebraic_simplification.is_present}"
+        f"  algebraic_simplification.is_present: "
+        f"{result.algebraic_simplification.is_present}"
     )
     print()
 
@@ -105,15 +112,18 @@ def demo_full_prompt_example() -> None:
     task_prompt = "Analyze this inference trace:\n\n{trace}\n\n{format_instructions}"
 
     example_trace = """1. First, I need to compute P(A|B=true)
-2. Looking at the Bayes net, variables C and D are not ancestors of A, so I can ignore them
+2. Looking at the Bayes net, variables C and D are not ancestors "
+    "of A, so I can ignore them
 3. Using the chain rule: P(A|B) = P(A,B) / P(B)
 4. To compute P(B), I need to sum over A: P(B) = sum_A P(A) * P(B|A)
 5. Factorizing: P(A,B) = P(A) * P(B|A)"""
 
-    full_prompt = (
-        f"{system_prompt}\n\n"
-        f"{task_prompt.format(trace=example_trace, format_instructions=parser.get_format_instructions())}"
+    format_instructions = parser.get_format_instructions()
+    formatted_task = task_prompt.format(
+        trace=example_trace,
+        format_instructions=format_instructions,
     )
+    full_prompt = f"{system_prompt}\n\n{formatted_task}"
 
     print("=" * 70)
     print("Complete Prompt with Format Instructions")

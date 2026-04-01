@@ -25,6 +25,7 @@ ignore = [
     "D212",  # Incompatible with D213
     "D203",  # Incompatible with D213 (one-blank-line-before-class)
 ]
+per-file-ignores = { "examples/*" = ["E402"], "experiments/**/*.py" = ["E402"] }
 task-tags = ["TODO", "todo"]
 
 [lint.pycodestyle]

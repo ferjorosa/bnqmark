@@ -1,4 +1,8 @@
-"""Test script to verify OpenRouter provider preferences work correctly using raw OpenAI client."""
+"""
+Test script to verify OpenRouter provider preferences work correctly.
+
+Uses the raw OpenAI client.
+"""
 
 import sys
 from pathlib import Path

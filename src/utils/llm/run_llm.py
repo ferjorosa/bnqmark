@@ -43,7 +43,8 @@ def run_llm_call(
             If not provided or empty, no provider preference is sent.
 
     Returns:
-        Tuple of (content, usage_metadata, response_reasoning_summary, response_metadata) where:
+        Tuple of (content, usage_metadata, response_reasoning_summary,
+        response_metadata) where:
         - content: The output text from the model
         - usage_metadata: Dictionary containing usage metadata including
           input_tokens and output_tokens (or None)
