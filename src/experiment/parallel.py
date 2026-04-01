@@ -32,11 +32,11 @@ def run_discrete_queries_parallel(
     task_prompt: str,
     system_prompt: str,
     reasoning_model: bool,
+    openrouter_api_key: str,
     temperature: float = 0.0,
     reasoning_effort: str | None = None,
     reasoning_summary: str | None = None,
     max_tokens: int | None = None,
-    openrouter_api_key: str | None = None,
     batch_size: int = 5,
     max_workers: int = 5,
     verbose: bool = False,
@@ -56,14 +56,13 @@ def run_discrete_queries_parallel(
         task_prompt: Prompt template with {cpts} and {query}.
         system_prompt: System prompt string for LLM.
         reasoning_model: If this is a reasoning model.
+        openrouter_api_key: OpenRouter API key.
         temperature: LLM temperature.
         reasoning_effort: Effort ("low", "medium", "high", or None).
             Defaults to None.
         reasoning_summary: Summary ("auto", "concise", "detailed", or None).
             Defaults to None.
         max_tokens: Max tokens for the response. Defaults to None.
-        openrouter_api_key: OpenRouter API key. If not provided, will be read
-                            from OPENROUTER_API_KEY environment variable.
         batch_size: Queries per batch (default 5).
         max_workers: Max parallel workers per batch (default 5).
         verbose: Print progress if True.

@@ -13,8 +13,6 @@ from enum import Enum
 from typing import Any
 
 import pandas as pd
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.prompts import PromptTemplate
 
 from src.database.discrete_arithmetic_behavior_analysis_db import (
     insert_arithmetic_analysis,
@@ -44,7 +42,8 @@ from src.trace_analysis.pydantic_models.code_strategy_analysis import (
 from src.trace_analysis.pydantic_models.inference_algorithm_analysis import (
     InferenceAlgorithmAnalysis,
 )
-from src.utils.llm_utils import run_llm_call
+from src.utils.llm import run_llm_call
+from src.utils.pydantic_parser import PydanticOutputParser
 
 logger = logging.getLogger(__name__)
 
@@ -156,7 +155,7 @@ def insert_analysis_result(
         raise ValueError(f"Unknown analysis type: {analysis_type}")
 
 
-def _prepare_analysis_prompt_template(
+def _prepare_analysis_prompt(
     system_prompt: str,
     task_prompt: str,
     response_reasoning_summary: str,
@@ -164,9 +163,9 @@ def _prepare_analysis_prompt_template(
     cpts: str,
     query: str,
     parser: PydanticOutputParser,
-) -> tuple[PromptTemplate, dict[str, Any], str]:
+) -> str:
     """
-    Prepare the prompt template for analysis.
+    Prepare the prompt string for analysis.
 
     Args:
         system_prompt: System prompt string.
@@ -178,26 +177,22 @@ def _prepare_analysis_prompt_template(
         parser: Output parser for the Pydantic model.
 
     Returns:
-        Tuple of (full_prompt_template, parameters, full_prompt)
+        Full formatted prompt string.
     """
     combined_prompt = f"{system_prompt}\n\n{task_prompt}"
 
-    full_prompt_template = PromptTemplate(
-        template=combined_prompt,
-        input_variables=["response_reasoning_summary", "response", "cpts", "query"],
-        partial_variables={"format_instructions": parser.get_format_instructions()},
+    # Substitute placeholders directly
+    full_prompt = (
+        combined_prompt.replace(
+            "{response_reasoning_summary}", response_reasoning_summary
+        )
+        .replace("{response}", response)
+        .replace("{cpts}", cpts)
+        .replace("{query}", query)
+        .replace("{format_instructions}", parser.get_format_instructions())
     )
 
-    parameters = {
-        "response_reasoning_summary": response_reasoning_summary,
-        "response": response,
-        "cpts": cpts,
-        "query": query,
-    }
-
-    full_prompt = full_prompt_template.format(**parameters)
-
-    return full_prompt_template, parameters, full_prompt
+    return full_prompt
 
 
 def run_single_analysis(
@@ -206,8 +201,8 @@ def run_single_analysis(
     task_prompt: str,
     model_name: str,
     analysis_type: AnalysisType,
+    openrouter_api_key: str,
     temperature: float = 0.0,
-    openrouter_api_key: str | None = None,
     reasoning_effort: str | None = None,
     reasoning_summary: str | None = None,
     max_tokens: int | None = None,
@@ -221,9 +216,8 @@ def run_single_analysis(
         task_prompt: Task prompt template string.
         model_name: Model name (e.g., "openai/gpt-4o", "google/gemini-2.5-flash").
         analysis_type: Type of analysis to perform.
+        openrouter_api_key: OpenRouter API key.
         temperature: Temperature for the analysis LLM.
-        openrouter_api_key: OpenRouter API key. If not provided, will be read
-            from OPENROUTER_API_KEY environment variable.
         reasoning_effort: Reasoning effort level. Values: "xhigh",
             "high", "medium", "low", "minimal", "none".
         reasoning_summary: Reasoning summary level. Values: "auto",
@@ -249,16 +243,14 @@ def run_single_analysis(
     evidence = row["evidence"]
     query_val = format_probability_query(target, evidence=evidence)
 
-    full_prompt_template, parameters, full_prompt_str = (
-        _prepare_analysis_prompt_template(
-            system_prompt=system_prompt,
-            task_prompt=task_prompt,
-            response_reasoning_summary=response_reasoning_summary_val,
-            response=response_val,
-            cpts=cpts_val,
-            query=query_val,
-            parser=parser,
-        )
+    full_prompt_str = _prepare_analysis_prompt(
+        system_prompt=system_prompt,
+        task_prompt=task_prompt,
+        response_reasoning_summary=response_reasoning_summary_val,
+        response=response_val,
+        cpts=cpts_val,
+        query=query_val,
+        parser=parser,
     )
 
     start_time = time.time()
@@ -266,21 +258,22 @@ def run_single_analysis(
 
     try:
         (
-            content,
+            response_content,
             usage_metadata,
             response_reasoning,
             response_metadata,
         ) = run_llm_call(
-            prompt_template=full_prompt_template,
+            prompt=full_prompt_str,
             model_name=model_name,
-            parameters=parameters,
-            output_parser=parser,
-            temperature=temperature,
             openrouter_api_key=openrouter_api_key,
+            temperature=temperature,
             max_tokens=max_tokens,
             reasoning_effort=reasoning_effort,
             reasoning_summary=reasoning_summary,
         )
+
+        # Parse the response using the Pydantic parser
+        content = parser.parse(response_content)
 
         duration = (time.time() - start_time) * 1000
         finished_at = datetime.now(UTC).isoformat()
