@@ -11,7 +11,7 @@ from dotenv import get_key
 openrouter_api_key = get_key(".env", "OPENROUTER_API_KEY")
 
 # Add project root to Python path for imports
-_repo_root = Path(__file__).resolve().parents[3]
+_repo_root = Path(__file__).resolve().parents[2]
 if str(_repo_root) not in sys.path:
     sys.path.insert(0, str(_repo_root))
 
@@ -39,7 +39,7 @@ def main():
         logger.error("OPENROUTER_API_KEY not found in .env file")
         return
 
-    repo_root = Path(__file__).resolve().parents[3]
+    repo_root = Path(__file__).resolve().parents[2]
     config_path = (
         repo_root / "config" / "trace_analysis" / "code_generation_behaviour.yaml"
     )
