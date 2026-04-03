@@ -173,10 +173,10 @@ def run_single_query(
 
             # Extract input_tokens and output_tokens from usage_metadata
             input_tokens = (
-                usage_metadata.get("input_tokens") if usage_metadata else None
+                usage_metadata.get("prompt_tokens") if usage_metadata else None
             )
             output_tokens = (
-                usage_metadata.get("output_tokens") if usage_metadata else None
+                usage_metadata.get("completion_tokens") if usage_metadata else None
             )
 
         except RuntimeError as e:
@@ -230,8 +230,6 @@ def run_single_query(
             openai_reasoning_summary=reasoning_summary,
             response_reasoning_summary=response_reasoning_summary,
             response_metadata=response_metadata,
-            bedrock_max_reasoning_tokens=None,
-            bedrock_max_tokens=max_tokens,
             input_tokens=input_tokens,
             output_tokens=output_tokens,
             usage_metadata=usage_metadata,
