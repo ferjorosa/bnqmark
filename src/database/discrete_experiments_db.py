@@ -56,8 +56,6 @@ def initialize_discrete_experiments_db() -> None:
                 reasoning_model BOOLEAN NOT NULL,
                 openai_reasoning_effort TEXT,
                 openai_reasoning_summary TEXT,
-                bedrock_max_reasoning_tokens INTEGER,
-                bedrock_max_tokens INTEGER,
                 input_tokens INTEGER,
                 output_tokens INTEGER,
                 usage_metadata TEXT,
@@ -164,8 +162,6 @@ def insert_experiment_row(
     openai_reasoning_summary: str | None = None,
     response_reasoning_summary: str | None = None,
     response_metadata: dict | None = None,
-    bedrock_max_reasoning_tokens: int | None = None,
-    bedrock_max_tokens: int | None = None,
     debug: bool = False,
 ) -> None:
     """
@@ -188,9 +184,6 @@ def insert_experiment_row(
         response_reasoning_summary: Actual reasoning summary returned from the
             model (or None)
         response_metadata: Dictionary containing response metadata (or None)
-        bedrock_max_reasoning_tokens: Maximum reasoning tokens for Bedrock
-            models (or None)
-        bedrock_max_tokens: Maximum tokens for Bedrock models (or None)
         input_tokens: Number of input tokens used
         output_tokens: Number of output tokens generated
         usage_metadata: Dictionary containing usage metadata (or None)
@@ -216,14 +209,13 @@ def insert_experiment_row(
             query_uuid, naming_strategy, run, experiment_type, full_prompt,
             response, response_reasoning_summary, response_metadata,
             model_name, reasoning_model, openai_reasoning_effort,
-            openai_reasoning_summary, bedrock_max_reasoning_tokens,
-            bedrock_max_tokens, input_tokens, output_tokens, usage_metadata,
+            openai_reasoning_summary, input_tokens, output_tokens, usage_metadata,
             temperature, llm_probability, code_followed_formatting_instructions,
             code_pgmpy_library_fix, code_exception_type, code_exception_message,
             started_at, finished_at
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?)
+                ?, ?)
     """
 
     params = (
@@ -239,8 +231,6 @@ def insert_experiment_row(
         reasoning_model,
         openai_reasoning_effort,
         openai_reasoning_summary,
-        bedrock_max_reasoning_tokens,
-        bedrock_max_tokens,
         input_tokens,
         output_tokens,
         usage_metadata_json,
@@ -282,14 +272,13 @@ def insert_experiment_batch(experiment_rows: list[dict], debug: bool = False) ->
             query_uuid, naming_strategy, run, experiment_type, full_prompt,
             response, response_reasoning_summary, response_metadata,
             model_name, reasoning_model, openai_reasoning_effort,
-            openai_reasoning_summary, bedrock_max_reasoning_tokens,
-            bedrock_max_tokens, input_tokens, output_tokens, usage_metadata,
+            openai_reasoning_summary, input_tokens, output_tokens, usage_metadata,
             temperature, llm_probability, code_followed_formatting_instructions,
             code_pgmpy_library_fix, code_exception_type, code_exception_message,
             started_at, finished_at
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?)
+                ?, ?)
     """
 
     params_list = []
@@ -325,8 +314,6 @@ def insert_experiment_batch(experiment_rows: list[dict], debug: bool = False) ->
             row["reasoning_model"],
             row.get("openai_reasoning_effort"),
             row.get("openai_reasoning_summary"),
-            row.get("bedrock_max_reasoning_tokens"),
-            row.get("bedrock_max_tokens"),
             row.get("input_tokens"),
             row.get("output_tokens"),
             usage_metadata_json,

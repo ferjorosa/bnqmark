@@ -7,6 +7,7 @@ Lightweight, serverless, and requires no external dependencies.
 
 import logging
 import sqlite3
+import threading
 from pathlib import Path
 
 import pandas as pd
@@ -15,7 +16,9 @@ logger = logging.getLogger(__name__)
 
 # Global state
 _db_path: str | None = None
-_connection: sqlite3.Connection | None = None
+
+# Thread-local storage for connections (each thread gets its own connection)
+_thread_local = threading.local()
 
 
 # ---------------------------------------------------------------------------
@@ -71,33 +74,32 @@ def get_connection() -> sqlite3.Connection:
     """
     Get a SQLite connection.
 
-    Uses a single persistent connection with row factory for dict-like access.
+    Uses thread-local storage to ensure each thread gets its own connection.
+    Connections have row factory enabled for dict-like access.
 
     Returns:
         sqlite3.Connection: SQLite database connection
     """
-    global _connection
-
     db_path = get_db_path()
 
-    if _connection is None:
-        _connection = sqlite3.connect(db_path)
+    # Check if this thread already has a connection
+    if not hasattr(_thread_local, "connection"):
+        # Create a new connection for this thread
+        _thread_local.connection = sqlite3.connect(db_path)
         # Enable foreign keys
-        _connection.execute("PRAGMA foreign_keys = ON")
+        _thread_local.connection.execute("PRAGMA foreign_keys = ON")
         # Return rows as dictionary-like objects
-        _connection.row_factory = sqlite3.Row
+        _thread_local.connection.row_factory = sqlite3.Row
 
-    return _connection
+    return _thread_local.connection
 
 
 def close_connection() -> None:
-    """Close the global database connection."""
-    global _connection
-
-    if _connection is not None:
-        _connection.close()
-        _connection = None
-        logger.info("Database connection closed")
+    """Close the current thread's database connection."""
+    if hasattr(_thread_local, "connection"):
+        _thread_local.connection.close()
+        delattr(_thread_local, "connection")
+        logger.debug("Database connection closed for current thread")
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +211,13 @@ def table_exists(table_name: str) -> bool:
 
 
 def close_connections():
-    """Close all database connections."""
+    """
+    Close all database connections.
+
+    Note: With thread-local connections, this only closes the current thread's
+    connection. Connections in other threads will be cleaned up when those
+    threads terminate.
+    """
     close_connection()
 
 
@@ -217,4 +225,5 @@ def vacuum() -> None:
     """Run VACUUM to optimize the database file size."""
     conn = get_connection()
     conn.execute("VACUUM")
+    conn.commit()
     logger.info("Database vacuumed")
