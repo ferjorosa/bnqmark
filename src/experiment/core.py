@@ -12,6 +12,7 @@ from enum import Enum
 from typing import Any
 
 import pandas as pd
+from openai import BadRequestError
 from pgmpy.models import DiscreteBayesianNetwork
 
 from src.database.discrete_experiments_db import (
@@ -24,7 +25,6 @@ from src.queries.formatting.format_query_str import (
 )
 from src.utils.error_utils import is_token_limit_error
 from src.utils.llm import run_llm_call
-from src.utils.tiktoken_utils import count_input_tokens
 
 logger = logging.getLogger(__name__)
 
@@ -179,16 +179,31 @@ def run_single_query(
                 usage_metadata.get("completion_tokens") if usage_metadata else None
             )
 
-        except RuntimeError as e:
+        except BadRequestError as e:
             # Check if this is specifically a token limit error
-            if is_token_limit_error(e):
-                # Estimate input tokens using tiktoken
-                input_tokens = count_input_tokens(full_prompt)
-                logger.warning(
-                    f"Input exceeds context length for query {query_uuid[:8]}: "
-                    f"estimated {input_tokens} input tokens"
-                )
-                error_message = f"Input exceeds context length (estimated {input_tokens} tokens using tiktoken o200k_base)"  # noqa: E501
+            # This also extracts the token count from the error message if available
+            is_token_limit, extracted_tokens = is_token_limit_error(e)
+
+            if is_token_limit:
+                # Use token count extracted from error message (if available)
+                input_tokens = extracted_tokens
+                if input_tokens is not None:
+                    logger.warning(
+                        f"Input exceeds context length for query {query_uuid[:8]}: "
+                        f"{input_tokens} input tokens"
+                    )
+                    error_message = (
+                        f"Input exceeds context length ({input_tokens} tokens)"  # noqa: E501
+                    )
+                else:
+                    logger.warning(
+                        f"Input exceeds context length for query {query_uuid[:8]}"
+                    )
+                    error_message = (
+                        "Input exceeds context length "
+                        "(unable to extract token count from error message)"
+                    )
+
                 output_tokens = 0
                 llm_probability = -1000.0
                 response = f"LLM call failed: {error_message}"
