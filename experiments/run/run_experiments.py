@@ -33,7 +33,7 @@ if str(_repo_root) not in sys.path:
 
 from src.database.discrete_experiments_db import initialize_discrete_experiments_db
 from src.experiment.core import ExperimentType
-from src.experiment.parallel import run_discrete_queries_parallel, run_discrete_queries_sequential
+from src.experiment.parallel import run_discrete_queries_parallel
 from src.utils.yaml_utils import load_yaml
 
 
@@ -115,7 +115,7 @@ def main():
 
     # Setup paths
     repo_root = Path(__file__).resolve().parents[2]
-    data_dir = repo_root / "data" / "discrete"
+    data_dir = repo_root / "data"
     config_path = repo_root / "config" / "experiments.yaml"
     prompts_path = repo_root / "prompts" / "experiments" / "prompts.yaml"
 
@@ -175,26 +175,7 @@ def main():
 
             # Run queries in parallel batches (langfuse initialization happens
             # inside run_discrete_queries_parallel)
-            # run_discrete_queries_parallel(
-            #     queries_df=queries_df,
-            #     bns_df=bns_df,
-            #     model_name=model_name,
-            #     run=run,
-            #     experiment_type=experiment_type,
-            #     task_prompt=task_prompt,
-            #     system_prompt=system_prompt,
-            #     reasoning_model=reasoning_model,
-            #     openrouter_api_key=openrouter_api_key,
-            #     temperature=temperature,
-            #     reasoning_effort=reasoning_effort,
-            #     reasoning_summary=reasoning_summary,
-            #     max_tokens=max_tokens,
-            #     batch_size=8,
-            #     max_workers=8,
-            #     verbose=True,
-            # )
-
-            run_discrete_queries_sequential(
+            run_discrete_queries_parallel(
                 queries_df=queries_df,
                 bns_df=bns_df,
                 model_name=model_name,
@@ -208,8 +189,27 @@ def main():
                 reasoning_effort=reasoning_effort,
                 reasoning_summary=reasoning_summary,
                 max_tokens=max_tokens,
+                batch_size=16,
+                max_workers=16,
                 verbose=True,
             )
+
+            # run_discrete_queries_sequential(
+            #     queries_df=queries_df,
+            #     bns_df=bns_df,
+            #     model_name=model_name,
+            #     run=run,
+            #     experiment_type=experiment_type,
+            #     task_prompt=task_prompt,
+            #     system_prompt=system_prompt,
+            #     reasoning_model=reasoning_model,
+            #     openrouter_api_key=openrouter_api_key,
+            #     temperature=temperature,
+            #     reasoning_effort=reasoning_effort,
+            #     reasoning_summary=reasoning_summary,
+            #     max_tokens=max_tokens,
+            #     verbose=True,
+            # )
 
             print(f"  ✓ Completed run {run}")
 
