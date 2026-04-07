@@ -54,4 +54,13 @@ def is_token_limit_error(error: BadRequestError) -> tuple[bool, int | None]:
             return True, int(match.group(1))
         return True, None
 
+    # Pattern 3: Google AI Studio error
+    # Example: "The input token count exceeds the maximum number of
+    #          tokens allowed 1048576."
+    if "input token count exceeds the maximum" in error_str_lower:
+        match = re.search(r"tokens allowed (\d+)", error_str_lower)
+        if match:
+            return True, int(match.group(1))
+        return True, None
+
     return False, None
