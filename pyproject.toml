@@ -14,6 +14,7 @@ dependencies = [
     "tiktoken>=0.12.0",
     "pydantic>=2.12.5",
     "openai>=2.30.0",
+    "seaborn>=0.13.2",
 ]
 
 # Explicitly use CPU-only PyTorch to avoid pulling in CUDA dependencies (not needed)

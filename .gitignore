@@ -31,3 +31,4 @@ results/learn/
 *.csv
 
 data/
+plots/
