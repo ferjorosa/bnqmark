@@ -80,4 +80,4 @@ llm_models:
 runs: 1
 
 # Type of experiment: "raw_reasoning" or "code_generation"
-experiment_type: "code_generation"
+experiment_type: "raw_reasoning"
