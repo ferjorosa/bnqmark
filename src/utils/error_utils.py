@@ -1,60 +1,66 @@
 """
 Utilities for detecting errors from LLM calls.
 
-This module provides functions to detect token limit errors across various providers.
+This module provides functions to detect token limit errors and extract
+token counts from error messages when available.
 """
 
+import re
 
-def is_token_limit_error(error: RuntimeError) -> bool:
+from openai import BadRequestError
+
+
+def is_token_limit_error(error: BadRequestError) -> tuple[bool, int | None]:
     """
     Check if an LLM call error is specifically about token limit exceeded.
 
-    This function checks multiple token limit error patterns in the lowercased
-    error string:
-    1. Gemini-style: "the input token count exceeds the maximum number of
-       tokens allowed"
-    2. Context length: "maximum context length" and "tokens" in the message
-    3. Upstream error: "is longer than the model's context length"
-    4. AWS Bedrock: "input is too long for requested model"
-    5. OpenRouter/Chutes: "exceeds maximum input length"
-    6. GPT-5: "your input exceeds the context window of this model"
+    Extracts the token count from the error message when available.
+
+    Error patterns handled:
+    1. "maximum context length is X tokens. However, you requested about Y tokens"
+    2. "prompt is too long: X tokens > Y maximum"
 
     Args:
         error: The RuntimeError exception.
 
     Returns:
-        True if the error is about token limit, False otherwise.
+        Tuple of (is_token_limit_error, token_count).
+        - is_token_limit_error: True if the error is about token limit, False otherwise.
+        - token_count: The extracted token count from the error message if available,
+          otherwise None.
     """
-    error_str_lower = str(error).lower()
+    error_str = str(error)
+    error_str_lower = error_str.lower()
 
-    # Pattern 1: Gemini-style token limit error
-    # Found in Gemini 3 Pro Preview
-    gemini_pattern = (
-        "the input token count exceeds the maximum number of tokens allowed"
-    )
-    if gemini_pattern in error_str_lower:
-        return True
+    # Pattern 1: "maximum context length is X tokens.
+    #             However, you requested about Y tokens"
+    # Example: endpoint's max context is 204800 tokens.
+    #          Requested 565880 tokens (565880 of text input).
+    if (
+        "maximum context length" in error_str_lower
+        and "you requested about" in error_str_lower
+    ):
+        match = re.search(r"you requested about (\d+) tokens", error_str_lower)
+        if match:
+            return True, int(match.group(1))
+        return True, None
 
-    # Pattern 2: Context length token limit error
-    # Found in GLM-4.6
-    if "maximum context length" in error_str_lower and "tokens" in error_str_lower:
-        return True
+    # Pattern 2: "prompt is too long: X tokens > Y maximum"
+    # Example: "prompt is too long: 1452972 tokens > 1000000 max"
+    # Note: Azure provider error for GPT models.
+    if "prompt is too long" in error_str_lower:
+        match = re.search(r"prompt is too long: (\d+) tokens", error_str_lower)
+        if match:
+            return True, int(match.group(1))
+        return True, None
 
-    # Pattern 3: Upstream error from providers (e.g., Chutes)
-    # Found in Qwen 3.235B A22B thinking 2507
-    if "is longer than the model's context length" in error_str_lower:
-        return True
+    # Pattern 3: Google AI Studio error
+    # Example: "The input token count exceeds the maximum number of
+    #          tokens allowed 1048576."
+    if "input token count exceeds the maximum" in error_str_lower:
+        match = re.search(r"tokens allowed (\d+)", error_str_lower)
+        if match:
+            return True, int(match.group(1))
+        return True, None
 
-    # Pattern 4: AWS Bedrock error
-    # Found in Sonnet 4.5
-    if "input is too long for requested model" in error_str_lower:
-        return True
-
-    # Pattern 5: OpenRouter/Chutes error with input length
-    # Found in Qwen 3.235B A22B thinking 2507
-    if "exceeds maximum input length" in error_str_lower:
-        return True
-
-    # Pattern 6: GPT-5 error
-    # Found in GPT-5
-    return "your input exceeds the context window of this model" in error_str_lower
+    return False, None

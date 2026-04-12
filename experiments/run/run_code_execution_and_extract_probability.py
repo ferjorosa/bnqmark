@@ -21,7 +21,7 @@ if str(_repo_root) not in sys.path:
     sys.path.insert(0, str(_repo_root))
 
 from src.database.database import execute_query, query_db
-from src.database.discrete_experiments_db import FULL_TABLE_NAME
+from src.database.discrete_experiments_db import TABLE_NAME
 from src.utils.code_execution_utils import execute_and_extract_probability
 
 # Configure logging
@@ -41,8 +41,8 @@ def main():
     # Note: We don't filter by code markers here because the execution utility
     # will handle that and record appropriate error messages
     fetch_query = f"""
-        SELECT id, response, model_name, run, query_uuid
-        FROM {FULL_TABLE_NAME}
+        SELECT query_uuid, naming_strategy, run, model_name, experiment_type, response
+        FROM {TABLE_NAME}
         WHERE experiment_type = 'code_generation'
           AND llm_probability IS NULL
           AND code_exception_type IS NULL
@@ -66,8 +66,13 @@ def main():
         if i % 10 == 0:
             print(f"Processing {i}/{total_experiments}...", end="\r")
 
-        experiment_id = row["id"]
+        query_uuid = row["query_uuid"]
+        naming_strategy = row["naming_strategy"]
+        run = row["run"]
+        model_name = row["model_name"]
+        experiment_type = row["experiment_type"]
         response = row["response"]
+        experiment_key = f"{query_uuid}/{naming_strategy}/run{run}/{model_name}"
 
         # Execute code
         try:
@@ -82,7 +87,7 @@ def main():
             # Log execution result
             if probability is not None:
                 logger.info(
-                    f"✅ Experiment {experiment_id}: probability = {probability:.6f}"
+                    f"✅ Experiment {experiment_key}: probability = {probability:.6f}"
                 )
                 updated_count += 1
             else:
@@ -90,20 +95,25 @@ def main():
                     exception_message[:100] if exception_message else "Unknown error"
                 )
                 logger.warning(
-                    f"❌ Experiment {experiment_id}: {exception_type} - {error_preview}"
+                    f"❌ Experiment {experiment_key}: {exception_type} - "
+                    f"{error_preview}"
                 )
                 failed_count += 1
 
             # Update database regardless of success or failure
             # This ensures we capture exception info even for failed executions
             update_query = f"""
-                UPDATE {FULL_TABLE_NAME}
-                SET llm_probability = %s,
-                    code_followed_formatting_instructions = %s,
-                    code_pgmpy_library_fix = %s,
-                    code_exception_type = %s,
-                    code_exception_message = %s
-                WHERE id = %s
+                UPDATE {TABLE_NAME}
+                SET llm_probability = ?,
+                    code_followed_formatting_instructions = ?,
+                    code_pgmpy_library_fix = ?,
+                    code_exception_type = ?,
+                    code_exception_message = ?
+                WHERE query_uuid = ?
+                  AND naming_strategy = ?
+                  AND run = ?
+                  AND model_name = ?
+                  AND experiment_type = ?
             """
             execute_query(
                 update_query,
@@ -113,12 +123,16 @@ def main():
                     pgmpy_fix_applied,
                     exception_type,
                     exception_message,
-                    experiment_id,
+                    query_uuid,
+                    naming_strategy,
+                    run,
+                    model_name,
+                    experiment_type,
                 ),
             )
 
         except Exception as e:
-            logger.error(f"Error processing experiment {experiment_id}: {e}")
+            logger.error(f"Error processing experiment {experiment_key}: {e}")
             failed_count += 1
 
     logger.info("=" * 40)

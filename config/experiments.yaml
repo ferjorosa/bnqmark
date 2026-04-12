@@ -1,5 +1,5 @@
 # We set temperatur to 0.0 following the advice of https://arxiv.org/pdf/2402.05201
-# Nevertheless, authors comment that changes in temperature from 0.0 to 1.0 do not have 
+# Nevertheless, authors comment that changes in temperature from 0.0 to 1.0 do not have
 # a statistically significant effect on the problemsolving performance of LLMs
 
 llm_models:
@@ -7,7 +7,7 @@ llm_models:
   # 1.05M context length
   - model_name: "openai/gpt-5.4"
     reasoning_model: true
-    temperature: 0.0 
+    temperature: 0.0
     reasoning_effort: "xhigh"
     reasoning_summary: "detailed"
     # provider_preferences: ["openai"] # does not work, don't know why
@@ -15,7 +15,7 @@ llm_models:
   # 200k context length
   - model_name: "z-ai/glm-5"
     reasoning_model: true
-    temperature: 0.0 
+    temperature: 0.0
     reasoning_effort: "xhigh"
     reasoning_summary: "detailed"
     provider_preferences: ["z-ai"]
@@ -23,7 +23,7 @@ llm_models:
   # 1.05M context length
   - model_name: "google/gemini-3.1-pro-preview"
     reasoning_model: true
-    temperature: 0.0 
+    temperature: 0.0
     reasoning_effort: "xhigh"
     reasoning_summary: "detailed"
     provider_preferences: ["google-ai-studio"]
@@ -31,7 +31,7 @@ llm_models:
   # 1M context length
   - model_name: "anthropic/claude-sonnet-4.6"
     reasoning_model: true
-    temperature: 0.0 
+    temperature: 0.0
     reasoning_effort: "xhigh"
     reasoning_summary: "detailed"
     provider_preferences: ["anthropic"]
@@ -39,7 +39,7 @@ llm_models:
   # 262k context length
   - model_name: "moonshotai/kimi-k2.5"
     reasoning_model: true
-    temperature: 0.0 
+    temperature: 0.0
     reasoning_effort: "xhigh"
     reasoning_summary: "detailed"
     provider_preferences: ["atlas-cloud/int4"] # moonshotai API did not work
@@ -47,15 +47,15 @@ llm_models:
   # 262k context length
   - model_name: "qwen/qwen3-max-thinking"
     reasoning_model: true
-    temperature: 0.0 
+    temperature: 0.0
     reasoning_effort: "xhigh"
     reasoning_summary: "detailed"
-    provider_preferences: ["alibaba"] # the only provider supported in openrouter      
+    provider_preferences: ["alibaba"] # the only provider supported in openrouter
 
   # 164k context length
   - model_name: "deepseek/deepseek-v3.2-speciale"
     reasoning_model: true
-    temperature: 0.0 
+    temperature: 0.0
     reasoning_effort: "xhigh"
     reasoning_summary: "detailed"
     provider_preferences: ["atlas-cloud/fp8"] # the only provider supported in openrouter
@@ -63,15 +63,15 @@ llm_models:
   # 2M context length
   - model_name: "x-ai/grok-4.20"
     reasoning_model: true
-    temperature: 0.0 
+    temperature: 0.0
     reasoning_effort: "xhigh"
     reasoning_summary: "detailed"
-    provider_preferences: ["xai"] # the only provider supported in openrouter    
+    provider_preferences: ["xai"] # the only provider supported in openrouter
 
   # 200k context length
   - model_name: "minimax/minimax-m2.7"
     reasoning_model: true
-    temperature: 0.0 
+    temperature: 0.0
     reasoning_effort: "xhigh"
     reasoning_summary: "detailed"
     provider_preferences: ["minimax/highspeed"]
@@ -80,4 +80,4 @@ llm_models:
 runs: 1
 
 # Type of experiment: "raw_reasoning" or "code_generation"
-experiment_type: "code_generation"
+experiment_type: "raw_reasoning"
