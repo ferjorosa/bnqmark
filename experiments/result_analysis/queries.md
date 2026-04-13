@@ -1,4 +1,4 @@
-## Queries below threshold
+## Queries below threshold (excluding nulls and -1000s)
 
 ```
 SELECT
@@ -19,3 +19,21 @@ WHERE e.llm_probability IS NOT NULL
     AND e.experiment_type = 'raw_reasoning'
 GROUP BY e.model_name;
 ```
+## Inference cost per model (raw-reasoning and code-generation)
+SELECT
+    de.model_name,
+    SUM(json_extract(de.usage_metadata, '$.upstream_inference_cost')) AS total_cost
+FROM discrete_experiments de
+WHERE de.experiment_type = 'raw_reasoning'
+GROUP BY de.model_name
+ORDER BY total_cost DESC;
+
+## Inference time
+
+SELECT
+    de.model_name,
+    SUM(unixepoch(de.finished_at) - unixepoch(de.started_at)) AS total_seconds
+FROM discrete_experiments de
+WHERE de.experiment_type = 'raw_reasoning'
+GROUP BY de.model_name
+ORDER BY total_seconds DESC;
