@@ -1,0 +1,387 @@
+#!/usr/bin/env python3
+"""
+Script to generate a grid of answerability heatmaps (3x3) in a single figure.
+
+Creates one figure with 3x3 subplots, each showing answerability heatmap for a model.
+Each heatmap shows:
+- Y-axis: network size (n)
+- X-axis: achieved treewidth
+- Cell values: answerability (0-1, where 1 = all queries answered,
+  0 = all failed with -1000)
+
+Requires global configuration for naming_strategy and experiment_type.
+"""
+
+from datetime import datetime
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from matplotlib.colors import LinearSegmentedColormap
+
+# Configuration - Edit these values to customize the output
+NAMING_STRATEGY = "simple"  # Options: "simple", "descriptive", etc.
+EXPERIMENT_TYPE = "code_generation"  # Options: "raw_reasoning", "code_generation"
+OUTPUT_FORMAT = "pdf"  # Options: "png", "pdf"
+
+# Grid configuration
+FIGURE_SIZE = (18, 16)  # Large figure to accommodate 3x3 grid
+ANNOT_FONT_SIZE = 8  # Cell value font size
+AXIS_LABEL_FONT_SIZE = 10  # X/Y axis label font size
+AXIS_TICK_FONT_SIZE = 8  # X/Y axis tick label font size
+TITLE_FONT_SIZE = 12  # Subplot title font size
+LABEL_PAD = 10  # Padding between axis labels and tick labels
+TITLE_PAD = 15  # Padding between subplot title and plot area
+
+
+def load_data(repo_root: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Load experiments, queries, and BNs from parquet files."""
+    experiments_path = repo_root / "data" / "experiments.parquet"
+    queries_path = repo_root / "data" / "queries.parquet"
+    bns_path = repo_root / "data" / "bns.parquet"
+
+    print(f"Loading experiments from {experiments_path}...")
+    experiments_df = pd.read_parquet(experiments_path)
+    print(f"✓ Loaded {len(experiments_df)} experiments")
+
+    print(f"Loading queries from {queries_path}...")
+    queries_df = pd.read_parquet(queries_path)
+    print(f"✓ Loaded {len(queries_df)} queries")
+
+    print(f"Loading BNs from {bns_path}...")
+    bns_df = pd.read_parquet(bns_path)
+    print(f"✓ Loaded {len(bns_df)} BNs\n")
+
+    return experiments_df, queries_df, bns_df
+
+
+def calculate_answerability_matrix(
+    experiments_df: pd.DataFrame,
+    queries_df: pd.DataFrame,
+    bns_df: pd.DataFrame,
+) -> pd.DataFrame:
+    """
+    Calculate answerability matrix with network sizes as rows and treewidths as columns.
+
+    Answerability = proportion of non-(-1000) predictions (0-1).
+
+    Returns:
+        DataFrame with n as index, treewidth as columns, answerability as values
+    """
+    # Filter BNs by the naming_strategy
+    bns_filtered = bns_df[bns_df["naming_strategy"] == NAMING_STRATEGY].copy()
+
+    # Create bn_uuid -> (n, achieved_tw) mapping
+    bns_unique = bns_filtered.drop_duplicates(subset=["bn_uuid"])
+    bn_metadata = bns_unique.set_index("bn_uuid")[["n", "achieved_tw"]].to_dict("index")
+
+    # Create query_uuid -> bn_uuid mapping
+    query_to_bn = queries_df.set_index("query_uuid")["bn_uuid"].to_dict()
+
+    # Add n and treewidth columns to experiments
+    experiments_df = experiments_df.copy()
+    experiments_df["bn_uuid"] = experiments_df["query_uuid"].map(query_to_bn)
+    experiments_df["n"] = experiments_df["bn_uuid"].map(
+        lambda x: bn_metadata.get(x, {}).get("n")
+    )
+    experiments_df["achieved_tw"] = experiments_df["bn_uuid"].map(
+        lambda x: bn_metadata.get(x, {}).get("achieved_tw")
+    )
+
+    # Get all unique network sizes and treewidths
+    network_sizes = sorted(experiments_df["n"].dropna().unique())
+    treewidths = sorted(experiments_df["achieved_tw"].dropna().unique())
+
+    # Initialize answerability matrix (rows = n, columns = treewidth)
+    answerability_matrix = pd.DataFrame(
+        index=[int(n) for n in network_sizes],
+        columns=[int(tw) for tw in treewidths],
+        dtype=float,
+    )
+
+    # Calculate answerability for each (n, treewidth) combination
+    for n in network_sizes:
+        for tw in treewidths:
+            # Filter experiments for this (n, treewidth) combination
+            subset = experiments_df[
+                (experiments_df["n"] == n) & (experiments_df["achieved_tw"] == tw)
+            ]
+
+            if len(subset) == 0:
+                # No experiments at all for this combination -> use sentinel -1
+                answerability_matrix.loc[int(n), int(tw)] = -1
+                continue
+
+            # Total unique queries for this combination
+            total_queries = subset["query_uuid"].nunique()
+
+            # Count non-(-1000) predictions (non-null and not -1000)
+            valid_predictions = subset[
+                (subset["llm_probability"].notna())
+                & (subset["llm_probability"] != -1000)
+            ]
+            answered_count = valid_predictions["query_uuid"].nunique()
+
+            # Check if ALL predictions are -1000 (complete failure = N/A)
+            if answered_count == 0:
+                # All predictions are -1000 or null -> N/A (black cell)
+                answerability_matrix.loc[int(n), int(tw)] = np.nan
+                continue
+
+            # Answerability as proportion 0-1
+            answerability = answered_count / total_queries
+            answerability_matrix.loc[int(n), int(tw)] = answerability
+
+    return answerability_matrix
+
+
+def create_heatmap_subplot(
+    ax: plt.Axes,
+    answerability_matrix: pd.DataFrame,
+    model: str,
+) -> None:
+    """Create a single heatmap subplot."""
+    # Create blue colormap: white for 0, blue colors for higher values
+    colors = ["#FFFFFF", "#BBDEFB", "#64B5F6", "#2196F3", "#0D47A1"]
+    n_bins = 100
+    cmap = LinearSegmentedColormap.from_list("blue", colors, N=n_bins)
+
+    # Prepare annotation matrix and identify cell types
+    annot_matrix = answerability_matrix.copy().astype(object)
+    na_cells = []  # (row, col) positions for N/A (black cells)
+    dash_cells = []  # (row, col) positions for "-" (white cells)
+
+    for i, row_idx in enumerate(answerability_matrix.index):
+        for j, col_idx in enumerate(answerability_matrix.columns):
+            val = answerability_matrix.loc[row_idx, col_idx]
+            if pd.isna(val):
+                annot_matrix.loc[row_idx, col_idx] = "N/A"
+                na_cells.append((i, j))
+            elif val == -1:
+                annot_matrix.loc[row_idx, col_idx] = "-"
+                dash_cells.append((i, j))
+            else:
+                annot_matrix.loc[row_idx, col_idx] = f"{val:.2f}"
+
+    # Fill NaN with 0 for visualization
+    plot_matrix = answerability_matrix.copy()
+    plot_matrix = plot_matrix.fillna(0)
+    for i, j in dash_cells:
+        plot_matrix.iloc[i, j] = 0
+
+    # Create heatmap
+    sns.heatmap(
+        plot_matrix,
+        annot=annot_matrix,
+        fmt="",
+        cmap=cmap,
+        vmin=0,
+        vmax=1,
+        cbar=False,  # No colorbar for individual subplots
+        ax=ax,
+        linewidths=0.5,
+        linecolor="gray",
+        annot_kws={"size": ANNOT_FONT_SIZE, "color": "black"},
+    )
+
+    # Overlay black cells for N/A (all -1000)
+    for i, j in na_cells:
+        ax.add_patch(
+            plt.Rectangle(
+                (j, i),
+                1,
+                1,
+                fill=True,
+                facecolor="black",
+                edgecolor="gray",
+                linewidth=0.5,
+                zorder=10,
+            )
+        )
+        # Add white text for N/A
+        ax.text(
+            j + 0.5,
+            i + 0.5,
+            "N/A",
+            ha="center",
+            va="center",
+            fontsize=ANNOT_FONT_SIZE,
+            color="white",
+            fontweight="bold",
+            zorder=11,
+        )
+
+    # Set labels with padding
+    ax.set_xlabel(
+        "Achieved Treewidth",
+        fontsize=AXIS_LABEL_FONT_SIZE,
+        fontweight="bold",
+        labelpad=LABEL_PAD,
+    )
+    ax.set_ylabel(
+        "Network Size (n)",
+        fontsize=AXIS_LABEL_FONT_SIZE,
+        fontweight="bold",
+        labelpad=LABEL_PAD,
+    )
+
+    # Format title (clean up model name) with padding
+    model_short = model.split("/")[-1] if "/" in model else model
+    ax.set_title(
+        model_short, fontsize=TITLE_FONT_SIZE, fontweight="bold", pad=TITLE_PAD
+    )
+
+    # Ensure y-axis labels are integers
+    ax.set_yticklabels(
+        [int(x) for x in answerability_matrix.index],
+        rotation=0,
+        fontsize=AXIS_TICK_FONT_SIZE,
+    )
+    ax.set_xticklabels(ax.get_xticklabels(), rotation=0, fontsize=AXIS_TICK_FONT_SIZE)
+
+
+def create_grid_figure(
+    all_matrices: dict[str, pd.DataFrame],
+) -> plt.Figure:
+    """Create a 3x3 grid figure with all model heatmaps."""
+    models = list(all_matrices.keys())
+    n_models = len(models)
+
+    # Create figure with 3x3 grid and space for colorbar
+    fig = plt.figure(figsize=FIGURE_SIZE)
+    gs = fig.add_gridspec(3, 3, hspace=0.3, wspace=0.3)
+    axes = [fig.add_subplot(gs[i // 3, i % 3]) for i in range(9)]
+
+    # Plot each model
+    for i, model in enumerate(models):
+        ax = axes[i]
+        answerability_matrix = all_matrices[model]
+        create_heatmap_subplot(ax, answerability_matrix, model)
+
+    # Hide unused subplots if less than 9 models
+    for i in range(n_models, 9):
+        axes[i].set_visible(False)
+
+    # Add shared colorbar at the figure level
+    # Create blue colormap for colorbar
+    colors = ["#FFFFFF", "#BBDEFB", "#64B5F6", "#2196F3", "#0D47A1"]
+    n_bins = 100
+    cmap = LinearSegmentedColormap.from_list("blue", colors, N=n_bins)
+
+    # Add colorbar axis
+    cbar_ax = fig.add_axes([0.92, 0.15, 0.02, 0.7])  # [left, bottom, width, height]
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=plt.Normalize(vmin=0, vmax=1))
+    sm.set_array([])
+    cbar = fig.colorbar(sm, cax=cbar_ax)
+    cbar.set_label("Answerability", fontsize=12, fontweight="bold")
+    cbar.ax.tick_params(labelsize=10)
+
+    # Format title based on experiment type
+    if EXPERIMENT_TYPE == "raw_reasoning":
+        title_text = "Answerability - Raw Reasoning"
+    elif EXPERIMENT_TYPE == "code_generation":
+        title_text = "Answerability - Code Generation"
+    else:
+        title_text = f"Answerability - {EXPERIMENT_TYPE}"
+
+    # Add big title for entire figure
+    fig.suptitle(
+        title_text,
+        fontsize=18,
+        fontweight="bold",
+        y=0.98,
+    )
+
+    return fig
+
+
+def save_plot(fig: plt.Figure, plots_dir: Path) -> Path:
+    """Save the grid figure to the plots directory."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = (
+        f"answerability_heatmap_grid_{NAMING_STRATEGY}_{EXPERIMENT_TYPE}_"
+        f"{timestamp}.{OUTPUT_FORMAT}"
+    )
+    plot_path = plots_dir / filename
+
+    if OUTPUT_FORMAT.lower() == "pdf":
+        fig.savefig(plot_path, format="pdf", bbox_inches="tight")
+    else:
+        fig.savefig(plot_path, dpi=300, bbox_inches="tight")
+    print(f"✓ Grid heatmap saved to: {plot_path}")
+
+    return plot_path
+
+
+def main():
+    """Main function to generate answerability heatmap grid."""
+    print("=" * 70)
+    print("Generating Answerability Heatmap Grid (3x3)")
+    print("=" * 70)
+    print("Configuration:")
+    print(f"  • Naming strategy: {NAMING_STRATEGY}")
+    print(f"  • Experiment type: {EXPERIMENT_TYPE}")
+    print("=" * 70)
+    print()
+
+    # Get repo root
+    repo_root = Path(__file__).resolve().parents[2]
+
+    # Create plots directory
+    plots_dir = repo_root / "plots" / "answerability_heatmap"
+    plots_dir.mkdir(parents=True, exist_ok=True)
+
+    # Load data
+    experiments_df, queries_df, bns_df = load_data(repo_root)
+
+    # Filter experiments by naming_strategy and experiment_type
+    filtered_exp = experiments_df[
+        (experiments_df["naming_strategy"] == NAMING_STRATEGY)
+        & (experiments_df["experiment_type"] == EXPERIMENT_TYPE)
+    ].copy()
+
+    print(f"Filtered to {len(filtered_exp)} experiments")
+    print(f"  • Naming strategy: {NAMING_STRATEGY}")
+    print(f"  • Experiment type: {EXPERIMENT_TYPE}\n")
+
+    if len(filtered_exp) == 0:
+        print("No experiments found matching the criteria. Exiting.")
+        return
+
+    # Get all unique models
+    models = filtered_exp["model_name"].unique()
+    print(f"Found {len(models)} models: {list(models)}\n")
+
+    # Calculate answerability matrix for each model
+    print("Calculating answerability matrices for each model...")
+    print("-" * 70)
+    all_matrices = {}
+
+    for model in models:
+        print(f"  Processing {model}...")
+        model_df = filtered_exp[filtered_exp["model_name"] == model]
+        answerability_matrix = calculate_answerability_matrix(
+            model_df, queries_df, bns_df
+        )
+        all_matrices[model] = answerability_matrix
+
+    print(f"\n✓ Calculated {len(all_matrices)} answerability matrices\n")
+
+    # Create grid figure
+    print("Creating 3x3 grid figure...")
+    fig = create_grid_figure(all_matrices)
+
+    # Save plot
+    save_plot(fig, plots_dir)
+
+    plt.close(fig)
+
+    print("\n" + "=" * 70)
+    print("✓ Grid heatmap generated!")
+    print("=" * 70)
+
+
+if __name__ == "__main__":
+    main()

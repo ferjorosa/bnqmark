@@ -78,5 +78,6 @@ def main() -> None:
     if usage:
         print(f"\nUsage: {usage}")
 
+
 if __name__ == "__main__":
     main()
