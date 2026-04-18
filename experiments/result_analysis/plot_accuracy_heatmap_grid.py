@@ -123,14 +123,14 @@ def calculate_accuracy_matrix(
                 how="inner",
             )
 
-            # Check if ALL predictions are -1000 (complete failure = N/A)
-            all_predictions = merged["llm_probability"]
-            valid_predictions = all_predictions[
-                all_predictions.notna() & (all_predictions != -1000)
-            ]
+            # Mark as N/A only when ALL predictions are the -1000 sentinel
+            # used for context-length failures. Nulls remain part of the
+            # denominator and therefore reduce accuracy.
+            all_predictions = subset["llm_probability"]
+            non_null_predictions = all_predictions[all_predictions.notna()]
 
-            if len(valid_predictions) == 0:
-                # All predictions are -1000 or null -> N/A (black cell)
+            if len(non_null_predictions) > 0 and (non_null_predictions == -1000).all():
+                # All non-null predictions are -1000 -> N/A (black cell)
                 accuracy_matrix.loc[int(n), int(tw)] = np.nan
                 continue
 

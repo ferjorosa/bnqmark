@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Arithmetic Behavior Trace Analysis Execution Script."""
+"""Code Generation Behaviour Trace Analysis Execution Script."""
 
 import logging
 import sys
@@ -15,9 +15,9 @@ _repo_root = Path(__file__).resolve().parents[2]
 if str(_repo_root) not in sys.path:
     sys.path.insert(0, str(_repo_root))
 
-from src.database.discrete_arithmetic_behavior_analysis_db import (
-    get_existing_arithmetic_analysis_identifiers,
-    initialize_arithmetic_analysis_db,
+from src.database.discrete_code_generation_behaviour_analysis_db import (
+    get_existing_code_generation_behaviour_analysis_identifiers,
+    initialize_code_generation_behaviour_analysis_db,
 )
 from src.trace_analysis.core import AnalysisType
 from src.trace_analysis.fetch_experiments import fetch_experiments
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 def main():
-    """Run the arithmetic behavior trace analysis."""
+    """Run the code generation behaviour trace analysis."""
     # Check API key was loaded
     if not openrouter_api_key:
         logger.error("OPENROUTER_API_KEY not found in .env file")
@@ -41,16 +41,10 @@ def main():
 
     repo_root = Path(__file__).resolve().parents[2]
     config_path = (
-        repo_root
-        / "config"
-        / "trace_analysis"
-        / "raw_reasoning_arithmetic_behaviour.yaml"
+        repo_root / "config" / "trace_analysis" / "code_generation_behaviour.yaml"
     )
     prompts_path = (
-        repo_root
-        / "prompts"
-        / "trace_analysis"
-        / "raw_reasoning_arithmetic_behaviour.yaml"
+        repo_root / "prompts" / "trace_analysis" / "code_generation_behaviour.yaml"
     )
 
     logger.info(f"Loading config from {config_path}")
@@ -62,8 +56,8 @@ def main():
     system_prompt = prompt_config["system_prompt"]
     task_prompt = prompt_config["task_prompt"]
 
-    logger.info("Initializing arithmetic analysis database...")
-    initialize_arithmetic_analysis_db()
+    logger.info("Initializing code generation behaviour analysis database...")
+    initialize_code_generation_behaviour_analysis_db()
 
     analyzer_config = config["analysis_model"]
     model_name = analyzer_config["model_name"]
@@ -75,23 +69,23 @@ def main():
     run = config.get("run", 1)
 
     logger.info(
-        f"Starting Arithmetic Behavior Analysis for models: {models_to_analyze}, "
+        f"Starting Code Generation Behaviour Analysis for models: {models_to_analyze}, "
         f"run: {run}"
     )
 
     # Get existing analyses to skip
-    existing_analyses = get_existing_arithmetic_analysis_identifiers()
+    existing_analyses = get_existing_code_generation_behaviour_analysis_identifiers()
 
     for model_to_analyze in models_to_analyze:
         logger.info(f"Fetching experiments for {model_to_analyze}...")
-        experiments = fetch_experiments(model_to_analyze, "raw_reasoning", run)
+        experiments = fetch_experiments(model_to_analyze, "code_generation", run)
         logger.info(f"Found {len(experiments)} experiments for {model_to_analyze}")
 
         run_trace_analysis_parallel(
             experiments_df=experiments,
             existing_analyses=existing_analyses,
             model_name=model_name,
-            analysis_type=AnalysisType.ARITHMETIC_BEHAVIOR,
+            analysis_type=AnalysisType.CODE_GENERATION_BEHAVIOUR,
             system_prompt=system_prompt,
             task_prompt=task_prompt,
             openrouter_api_key=openrouter_api_key,
@@ -99,12 +93,12 @@ def main():
             reasoning_effort=reasoning_effort,
             reasoning_summary=reasoning_summary,
             max_tokens=max_tokens,
-            batch_size=4,
-            max_workers=4,
+            batch_size=32,
+            max_workers=32,
             verbose=True,
         )
 
-    logger.info("Arithmetic Behavior Analysis completed!")
+    logger.info("Code Generation Behaviour Analysis completed!")
 
 
 if __name__ == "__main__":

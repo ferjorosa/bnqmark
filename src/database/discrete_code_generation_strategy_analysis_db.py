@@ -169,7 +169,7 @@ def insert_code_generation_strategy_analysis(
             llm_call_input_tokens, llm_call_output_tokens, llm_call_usage_metadata,
             llm_call_temperature, llm_call_started_at, llm_call_finished_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """
 
     params = (

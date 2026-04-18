@@ -39,7 +39,9 @@ def generate_model_summary(
 
     Columns:
     - model_name: Name of the model
+    - total_queries: Total number of queries attempted
     - supported_queries: Number of queries without llm_probability = -1000
+    - answerability: Proportion of supported queries with non-null llm_probability (0-1)
     - mae: Mean Absolute Error (valid queries only)
     - std_error: Standard deviation of absolute errors (valid queries only)
     - accuracy: Percentage of queries (excluding -1000) with abs_error <= threshold
@@ -47,6 +49,9 @@ def generate_model_summary(
 
     MAE and std_error are computed only on valid queries (not None and not -1000).
     Accuracy excludes -1000 (context limit exceeded) but counts null as failure.
+    Answerability = answered/supported, where answered = not(-1000) and not null,
+    and supported = not(-1000). This measures: of queries that didn't hit context
+    limits, what proportion returned a valid probability.
     """
     experiments_df = load_experiments()
     queries_df = load_queries()
@@ -61,6 +66,9 @@ def generate_model_summary(
     # Get all unique models
     all_models = experiments_df["model_name"].unique().tolist()
 
+    # Count total queries per model (all experiments)
+    total_counts = experiments_df.groupby("model_name").size().to_dict()
+
     # Count supported queries (llm_probability != -1000)
     supported_counts = (
         experiments_df[experiments_df["llm_probability"] != -1000]
@@ -68,6 +76,25 @@ def generate_model_summary(
         .size()
         .to_dict()
     )
+
+    # Count answered queries (llm_probability != -1000 AND not null)
+    answered_counts = (
+        experiments_df[
+            (experiments_df["llm_probability"].notna())
+            & (experiments_df["llm_probability"] != -1000)
+        ]
+        .groupby("model_name")
+        .size()
+        .to_dict()
+    )
+
+    # Calculate answerability: proportion of supported queries
+    # that are answered (not null). answerability = answered / supported
+    answerability = {}
+    for model in all_models:
+        supported = supported_counts.get(model, 0)
+        answered = answered_counts.get(model, 0)
+        answerability[model] = answered / supported if supported > 0 else float("nan")
 
     # Filter to valid probabilities for MAE calculation
     valid_df = experiments_df[
@@ -121,7 +148,9 @@ def generate_model_summary(
         rows.append(
             {
                 "model_name": model,
+                "total_queries": total_counts.get(model, 0),
                 "supported_queries": supported_counts.get(model, 0),
+                "answerability": answerability.get(model, float("nan")),
                 "mae": model_stats["mean"],
                 "std_error": model_stats["std"],
                 "accuracy": accuracy_stats.get(model, float("nan")),
@@ -142,6 +171,9 @@ def main():
 
     # Format for display
     display_df = summary_df.copy()
+    display_df["answerability"] = display_df["answerability"].apply(
+        lambda x: f"{x:.4f}" if pd.notna(x) else "N/A"
+    )
     display_df["mae"] = display_df["mae"].apply(
         lambda x: f"{x:.6f}" if pd.notna(x) else "N/A"
     )

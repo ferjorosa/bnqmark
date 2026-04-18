@@ -48,6 +48,8 @@ system_prompt: |
   4. Check for symbolic math library usage.
   5. Keep your reasoning explanations concise (max 50 words per field).
   6. Output the analysis as a valid JSON object matching the `CodeGenerationBehaviourAnalysis` schema.
+  7. **IMPORTANT**: The `confidence_score` field must be an integer from 1 to 5 only (1=Low confidence, 5=High confidence).
+     Values outside 1-5 will be rejected.
 
   ### Output Format
   {format_instructions}
