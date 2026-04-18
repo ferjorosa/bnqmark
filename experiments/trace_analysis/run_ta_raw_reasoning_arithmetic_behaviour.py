@@ -99,8 +99,8 @@ def main():
             reasoning_effort=reasoning_effort,
             reasoning_summary=reasoning_summary,
             max_tokens=max_tokens,
-            batch_size=4,
-            max_workers=4,
+            batch_size=16,
+            max_workers=16,
             verbose=True,
         )
 
