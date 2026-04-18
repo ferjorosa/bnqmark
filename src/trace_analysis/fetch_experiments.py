@@ -33,10 +33,10 @@ def fetch_experiments(model_name: str, experiment_type: str, run: int) -> Any:
             q.target,
             q.evidence,
             bn.bn_pickle
-        FROM research_probabilistic_reasoning.discrete_experiments e
-        JOIN research_probabilistic_reasoning.discrete_queries q
+        FROM discrete_experiments e
+        JOIN discrete_queries q
             ON e.query_uuid = q.query_uuid AND e.naming_strategy = q.naming_strategy
-        JOIN research_probabilistic_reasoning.discrete_bns bn
+        JOIN discrete_bns bn
             ON q.bn_uuid = bn.bn_uuid AND q.naming_strategy = bn.naming_strategy
         WHERE e.model_name = ?
           AND e.experiment_type = ?
