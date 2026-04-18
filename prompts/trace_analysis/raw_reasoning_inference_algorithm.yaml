@@ -56,6 +56,8 @@ system_prompt: |
   4. Extract specific evidence (quotes) to support your classification.
   5. Keep your reasoning explanations concise (max 50 words per field).
   6. Output the analysis as a valid JSON object matching the `InferenceAlgorithmAnalysis` schema.
+  7. **IMPORTANT**: The `confidence_score` field must be an integer from 1 to 5 only (1=Low confidence, 5=High confidence).
+     Values outside 1-5 will be rejected.
 
   ### Output Format
   {format_instructions}

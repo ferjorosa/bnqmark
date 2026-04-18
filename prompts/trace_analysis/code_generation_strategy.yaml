@@ -57,6 +57,8 @@ system_prompt: |
   5. Write a 1-sentence summary of the code's approach.
   6. Keep your reasoning explanations concise (max 50 words per field).
   7. Output the analysis as a valid JSON object matching the `CodeStrategyAnalysis` schema.
+  8. **IMPORTANT**: The `confidence_score` field must be an integer from 1 to 5 only (1=Low confidence, 5=High confidence).
+     Values outside 1-5 will be rejected.
 
   ### Output Format
   {format_instructions}
