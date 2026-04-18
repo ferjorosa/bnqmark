@@ -124,9 +124,14 @@ def calculate_answerability_matrix(
             ]
             answered_count = valid_predictions["query_uuid"].nunique()
 
-            # Check if ALL predictions are -1000 (complete failure = N/A)
-            if answered_count == 0:
-                # All predictions are -1000 or null -> N/A (black cell)
+            # Mark as N/A only when ALL non-null predictions are the -1000 sentinel
+            # used for context-length failures. Nulls remain part of the
+            # denominator and therefore reduce answerability.
+            all_predictions = subset["llm_probability"]
+            non_null_predictions = all_predictions[all_predictions.notna()]
+
+            if len(non_null_predictions) > 0 and (non_null_predictions == -1000).all():
+                # All non-null predictions are -1000 -> N/A (black cell)
                 answerability_matrix.loc[int(n), int(tw)] = np.nan
                 continue
 

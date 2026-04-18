@@ -22,9 +22,19 @@ from matplotlib.colors import LinearSegmentedColormap
 # Heatmap configuration
 FIGURE_SIZE = (12, 10)  # Slightly larger to accommodate bigger fonts
 DPI = 300
-ANNOT_FONT_SIZE = 14  # Increased cell value font size
-X_AXIS_FONT_SIZE = 12  # X-axis tick label font size
 OUTPUT_FORMAT = "pdf"  # Options: "png", "pdf"
+
+# Font sizes
+ANNOT_FONT_SIZE = 18  # Cell value font size
+X_AXIS_FONT_SIZE = 16  # X-axis tick label font size
+Y_AXIS_FONT_SIZE = 16  # Y-axis tick label font size
+X_AXIS_TITLE_FONT_SIZE = 16  # X-axis title font size
+Y_AXIS_TITLE_FONT_SIZE = 16  # Y-axis title font size
+TITLE_FONT_SIZE = 20  # Main title font size
+
+# Spacing
+TITLE_PAD = 40  # Padding between title and plot area
+LABEL_PAD = 15  # Padding between axis labels and tick labels
 
 
 def load_data(repo_root: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -161,18 +171,30 @@ def create_heatmap(query_count_matrix: pd.DataFrame) -> plt.Figure:
         )
 
     # Set labels with padding to separate from tick labels
-    ax.set_xlabel("Achieved Treewidth", fontsize=14, fontweight="bold", labelpad=15)
-    ax.set_ylabel("Network Size (n)", fontsize=14, fontweight="bold", labelpad=15)
-    ax.set_title(
-        "Number of Queries per Network Size and Treewidth",
-        fontsize=14,
+    ax.set_xlabel(
+        "Achieved Treewidth",
+        fontsize=X_AXIS_TITLE_FONT_SIZE,
         fontweight="bold",
-        pad=20,
+        labelpad=LABEL_PAD,
+    )
+    ax.set_ylabel(
+        "Network Size (n)",
+        fontsize=Y_AXIS_TITLE_FONT_SIZE,
+        fontweight="bold",
+        labelpad=LABEL_PAD,
+    )
+    ax.set_title(
+        "Number of Queries per Network Size and Achieved Treewidth",
+        fontsize=TITLE_FONT_SIZE,
+        fontweight="bold",
+        pad=TITLE_PAD,
     )
 
     # Ensure y-axis labels are integers and set font sizes
     ax.set_yticklabels(
-        [int(x) for x in query_count_matrix.index], rotation=0, fontsize=12
+        [int(x) for x in query_count_matrix.index],
+        rotation=0,
+        fontsize=Y_AXIS_FONT_SIZE,
     )
     ax.set_xticklabels(ax.get_xticklabels(), rotation=0, fontsize=X_AXIS_FONT_SIZE)
 

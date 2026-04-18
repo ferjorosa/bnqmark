@@ -128,9 +128,20 @@ def calculate_mae_matrix(
                 & (merged["llm_probability"] != -1000)
             ].copy()
 
-            if len(valid) == 0:
-                # All predictions are -1000 or null -> N/A (black cell)
+            # Mark as N/A only when ALL non-null predictions are the -1000 sentinel
+            # used for context-length failures. Nulls are excluded from MAE calc
+            # (not counted), but don't trigger N/A.
+            all_predictions = subset["llm_probability"]
+            non_null_predictions = all_predictions[all_predictions.notna()]
+
+            if len(non_null_predictions) > 0 and (non_null_predictions == -1000).all():
+                # All non-null predictions are -1000 -> N/A (black cell, context limit)
                 mae_matrix.loc[int(n), int(tw)] = np.nan
+                continue
+
+            if len(non_null_predictions) == 0:
+                # All predictions are NULL -> N/A (red cell, no parseable answer)
+                mae_matrix.loc[int(n), int(tw)] = -2
                 continue
 
             # Calculate absolute differences
@@ -157,7 +168,8 @@ def create_heatmap_subplot(
 
     # Prepare annotation matrix and identify cell types
     annot_matrix = mae_matrix.copy().astype(object)
-    na_cells = []  # (row, col) positions for N/A (black cells)
+    na_cells_black = []  # (row, col) positions for N/A (black cells: all -1000)
+    na_cells_red = []  # (row, col) positions for N/A (red cells: all NULL)
     dash_cells = []  # (row, col) positions for "-" (white cells)
 
     for i, row_idx in enumerate(mae_matrix.index):
@@ -165,17 +177,22 @@ def create_heatmap_subplot(
             val = mae_matrix.loc[row_idx, col_idx]
             if pd.isna(val):
                 annot_matrix.loc[row_idx, col_idx] = "N/A"
-                na_cells.append((i, j))
+                na_cells_black.append((i, j))
+            elif val == -2:
+                annot_matrix.loc[row_idx, col_idx] = "N/A"
+                na_cells_red.append((i, j))
             elif val == -1:
                 annot_matrix.loc[row_idx, col_idx] = "-"
                 dash_cells.append((i, j))
             else:
                 annot_matrix.loc[row_idx, col_idx] = f"{val:.2f}"
 
-    # Fill NaN with 0 for visualization
+    # Fill NaN and -2 with 0 for visualization
     plot_matrix = mae_matrix.copy()
     plot_matrix = plot_matrix.fillna(0)
     for i, j in dash_cells:
+        plot_matrix.iloc[i, j] = 0
+    for i, j in na_cells_red:
         plot_matrix.iloc[i, j] = 0
 
     # Create heatmap with fixed range 0-1
@@ -193,8 +210,8 @@ def create_heatmap_subplot(
         annot_kws={"size": ANNOT_FONT_SIZE, "color": "black"},
     )
 
-    # Overlay black cells for N/A (all -1000)
-    for i, j in na_cells:
+    # Overlay black cells for N/A (all -1000, context limit)
+    for i, j in na_cells_black:
         ax.add_patch(
             plt.Rectangle(
                 (j, i),
@@ -202,6 +219,33 @@ def create_heatmap_subplot(
                 1,
                 fill=True,
                 facecolor="black",
+                edgecolor="gray",
+                linewidth=0.5,
+                zorder=10,
+            )
+        )
+        # Add white text for N/A
+        ax.text(
+            j + 0.5,
+            i + 0.5,
+            "N/A",
+            ha="center",
+            va="center",
+            fontsize=ANNOT_FONT_SIZE,
+            color="white",
+            fontweight="bold",
+            zorder=11,
+        )
+
+    # Overlay red cells for N/A (all NULL, no parseable answer)
+    for i, j in na_cells_red:
+        ax.add_patch(
+            plt.Rectangle(
+                (j, i),
+                1,
+                1,
+                fill=True,
+                facecolor="red",
                 edgecolor="gray",
                 linewidth=0.5,
                 zorder=10,
