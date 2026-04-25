@@ -34,6 +34,25 @@ The dataset includes:
 - 434 conditional probability queries
 - 7,812 LLM evaluation results from 9 frontier models
 
+## Reproducing the Paper Experiments
+
+The main experiment pipeline follows this order:
+
+1. Generate Bayesian networks:
+   `python experiments/generate_data/generate_bn_dataset.py`
+2. Generate inference queries:
+   `python experiments/generate_data/generate_query_dataset.py`
+3. Run LLM evaluations:
+   `python experiments/main/run_experiments.py`
+4. Export experiment results:
+   `python experiments/export_data/export_experiments_to_parquet.py`
+5. Generate result plots:
+   `python experiments/result_analysis/plot_accuracy_heatmap_grid.py`
+   `python experiments/result_analysis/plot_answerability_heatmap_grid.py`
+   `python experiments/result_analysis/plot_mae_heatmap_grid.py`
+
+Configuration files live in `config/`, prompt templates in `prompts/`, and generated outputs are written to `data/` and `plots/`. Exact reruns may differ slightly depending on OpenRouter model availability and provider-side model updates.
+
 ## Citation
 
 ```bibtex
