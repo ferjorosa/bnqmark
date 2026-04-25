@@ -1,15 +1,18 @@
-# Query Generation and Analysis
+# Queries
 
-Generates and analyzes probabilistic queries from Bayesian Networks for evaluating LLM probabilistic reasoning capabilities.
+Generate, format, and analyze conditional probability queries for Bayesian network inference tasks.
 
 ## Modules
 
-- **`generation`** – Generates diverse queries from Bayesian Networks.
-- **`analysis`** – Analyzes query structural properties and difficulty metrics.
-- **`sweep`** – Generates queries with parameter sweeps and threshold filtering.
+- **`generation`** — Low-level query sampling and constraint enforcement.
+- **`sweep`** — Dataset-level query generation across target/evidence configurations.
+- **`analysis`** — Structural query metrics such as distances and Markov blanket sizes.
+- **`complexity`** — Inference complexity estimates and elimination analysis.
+- **`formatting`** — Query string formatting for prompts and outputs.
 
 ## Main Functions
 
-- `generate_queries(...)` – Generate diverse queries with configurable query node counts, evidence counts, and distance buckets.
-- `compute_query_structural_properties(...)` – Compute structural properties like Markov blanket sizes and target-evidence distances.
-- `generate_queries_with_sampling(...)` – Generate queries with threshold filtering on posterior-prior differences.
+- `generate_single_query(...)` — Generate one query satisfying node, evidence, and distance constraints.
+- `generate_queries_with_sampling(...)` — Generate benchmark query sweeps with informativeness filtering.
+- `compute_query_structural_properties(...)` — Compute structural metadata for a query.
+- `format_query_str(...)` — Format a query as text for LLM prompts.

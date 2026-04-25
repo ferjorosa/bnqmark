@@ -1,10 +1,6 @@
 # BNqMark
 
-BNqMark is a benchmark for evaluating Large Language Models (LLMs) on exact probabilistic inference in discrete Bayesian Networks.
-
-## Overview
-
-The benchmark isolates probabilistic computation from linguistic interpretation by presenting LLMs with complete conditional probability table (CPT) specifications and asking them to answer conditional probability queries.
+BNqMark is a benchmark for evaluating Large Language Models (LLMs) on exact probabilistic inference in discrete Bayesian Networks. It isolates probabilistic computation from linguistic interpretation by presenting complete conditional probability table (CPT) specifications and asking models to answer conditional probability queries.
 
 Two evaluation protocols are used:
 - **Raw reasoning**: The model computes the probability directly from the CPTs
@@ -19,6 +15,8 @@ Two evaluation protocols are used:
 - `prompts/` — LLM prompt templates
 - `config/` — Configuration files for experiments
 
+> **Note on Trace Analysis**: The `src/trace_analysis/` and `experiments/trace_analysis/` modules are **not part of the current paper**. Closed-source models (GPT-5.4, Gemini 3.1 Pro, Claude Sonnet 4.6, Grok 4.20) do not provide the original reasoning traces required for this analysis. In the case of Grok, no reasoning summary is provided at all. These modules were developed for potential future work with open-weight models that expose reasoning tokens.
+
 ## Dataset
 
 The BNqMark-20 dataset is published on HuggingFace Hub:
@@ -26,7 +24,6 @@ The BNqMark-20 dataset is published on HuggingFace Hub:
 ```python
 from datasets import load_dataset
 
-# Load each configuration
 bns = load_dataset("ferjorosa/bnqmark-20", "bns")["train"]
 queries = load_dataset("ferjorosa/bnqmark-20", "queries")["train"]
 experiments = load_dataset("ferjorosa/bnqmark-20", "experiments")["train"]

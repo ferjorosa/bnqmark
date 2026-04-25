@@ -1,14 +1,15 @@
-# Bayesian Network Generation and Analysis
+# Bayesian Networks
 
-Generates discrete Bayesian Networks with controllable structural and distributional properties for evaluating LLM probabilistic reasoning.
+Generate, evaluate, and analyze discrete Bayesian Networks with controllable structural and distributional properties.
 
 ## Modules
 
-- **`sweep`** – Main submodule. Generates multiple BNs with systematic parameter sweeps.
-- **`generation`** – Lower-level single-network generation.
-- **`evaluation`** – Validation helpers for naming variants.
-- **`analysis`** – Visualization and structural metrics.
+- **`generation`** — Single-network generation from DAGs and CPD settings.
+- **`sweep`** — Dataset-level generation across network sizes, treewidths, arities, and CPT parameters.
+- **`evaluation`** — Validation helpers for generated networks and naming variants.
+- **`analysis`** — Structural metrics and visualization utilities.
 
-## Main Function
+## Main Functions
 
-- `generate_bayesian_networks_and_metadata(ns, treewidths, arity_specs, ...)` – Primary entry point for BN dataset generation.
+- `generate_single_bayesian_network(...)` — Generate one Bayesian network.
+- `generate_bayesian_networks_and_metadata(...)` — Generate benchmark network sweeps with metadata.
