@@ -1,12 +1,12 @@
-# DAG Generation and Analysis
+# DAGs
 
-Generates and analyzes directed acyclic graphs (DAGs) with controllable treewidth for probabilistic reasoning experiments.
+Generate and analyze directed acyclic graphs (DAGs) with controllable treewidth for Bayesian network construction.
 
 ## Modules
 
-- **`generation`** – Main submodule. Generates DAGs with target treewidth.
-- **`analysis`** – Analyzes structural properties and verifies generated DAGs.
+- **`generation`** — DAG generation with target treewidth and acyclicity constraints.
+- **`analysis`** — Structural analysis helpers for generated DAGs.
 
-## Main Function
+## Main Functions
 
-- `generate_single_dag(n_nodes, target_treewidth, ...)` – Primary entry point for DAG generation.
+- `generate_single_dag(n_nodes, target_treewidth, ...)` — Generate one DAG with a target treewidth.
