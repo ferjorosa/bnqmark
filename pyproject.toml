@@ -1,7 +1,7 @@
 [project]
-name = "probabilistic-inference-llms"
+name = "bnqmark"
 version = "0.1.0"
-description = "Investigate LLM capabilities for probabilistic inference"
+description = "BNqMark: A benchmark for evaluating LLMs on exact probabilistic inference in Bayesian Networks"
 readme = "README.md"
 requires-python = ">=3.12.3"
 
