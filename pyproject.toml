@@ -15,6 +15,8 @@ dependencies = [
     "pydantic>=2.12.5",
     "openai>=2.30.0",
     "seaborn>=0.13.2",
+    "datasets>=4.8.4",
+    "huggingface-hub>=1.12.0",
 ]
 
 # Explicitly use CPU-only PyTorch to avoid pulling in CUDA dependencies (not needed)
