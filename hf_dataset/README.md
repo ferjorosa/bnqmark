@@ -15,6 +15,19 @@ tags:
 - code-generation
 size_categories:
 - 1K<n<10K
+configs:
+- config_name: bns
+  data_files:
+  - split: train
+    path: data/bns/train.parquet
+- config_name: queries
+  data_files:
+  - split: train
+    path: data/queries/train.parquet
+- config_name: experiments
+  data_files:
+  - split: train
+    path: data/experiments/train.parquet
 ---
 
 # BNqMark-20
@@ -57,7 +70,7 @@ Each row represents a Bayesian network configuration with its structural and dis
 
 ### 2. `queries` - Inference Queries (434 rows)
 
-Each row represents a conditional probability query P(Q=q|E=e) with ground truth values.
+Each row represents a conditional probability query `P(Q=q | E=e)` with ground truth values.
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -69,8 +82,8 @@ Each row represents a conditional probability query P(Q=q|E=e) with ground truth
 | `evidence` | string | Evidence variable(s) and value(s) as JSON (e.g., `{"V1": "s0"}`) |
 | `num_evidence` | int64 | Number of evidence variables (1 or 2) |
 | `num_target` | int64 | Number of target variables (1 or 2) |
-| `probability` | float64 | Ground truth conditional probability P(Q=q\|E=e) |
-| `prior_probability` | float64 | Prior probability P(Q=q) without conditioning |
+| `probability` | float64 | Ground truth conditional probability |
+| `prior_probability` | float64 | Prior probability `P(Q=q)` without conditioning |
 | `induced_width` | int64 | Induced width during variable elimination |
 | `num_eliminated` | int64 | Number of variables eliminated to answer the query |
 | `avg_markov_blanket_size_target` | float64 | Average Markov blanket size of target nodes |
@@ -87,7 +100,7 @@ Each row represents a conditional probability query P(Q=q|E=e) with ground truth
 | `num_evidence_nodes` | int64 | Number of distinct evidence nodes |
 | `target_nodes` | string | List of target node names as JSON |
 | `evidence_nodes` | string | List of evidence node names as JSON |
-| `abs_diff` | float64 | Absolute difference \|P(Q\|E) - P(Q)\| (informativeness measure) |
+| `abs_diff` | float64 | Absolute difference `|P(Q|E) - P(Q)|` (informativeness measure) |
 | `rel_diff` | float64 | Relative difference (informativeness measure) |
 | `avg_distance_target_evidence` | float64 | Average distance between target and evidence nodes |
 | `created_at` | timestamp | Timestamp when the record was created |
@@ -161,21 +174,21 @@ gpt_results = experiments_df[experiments_df["model_name"] == "openai/gpt-5.4"]
   - Target cardinality: 1 or 2 variables
   - Evidence cardinality: 1 or 2 variables
   - Distance strata: min 1, 2, or 3 edges between target and evidence
-- **Informativeness threshold**: $|P(Q \mid E) - P(Q)| \geq 0.1$
+- **Informativeness threshold**: `|P(Q|E) - P(Q)| >= 0.1`
 
 ### Experiments
-- **Models evaluated**: 9 frontier LLMs
-  - openai/gpt-5.4
-  - x-ai/grok-4.20
-  - anthropic/claude-sonnet-4.6
-  - google/gemini-3.1-pro-preview
-  - qwen/qwen3-max-thinking
-  - moonshotai/kimi-k2.5
-  - deepseek/deepseek-v3.2-speciale
-  - z-ai/glm-5
-  - minimax/minimax-m2.7
+- **Models evaluated**: 9 frontier LLMs via [OpenRouter](https://openrouter.ai/)
+  - [openai/gpt-5.4](https://openrouter.ai/openai/gpt-5.4)
+  - [x-ai/grok-4.20](https://openrouter.ai/x-ai/grok-4.20)
+  - [anthropic/claude-sonnet-4.6](https://openrouter.ai/anthropic/claude-sonnet-4.6)
+  - [google/gemini-3.1-pro-preview](https://openrouter.ai/google/gemini-3.1-pro-preview)
+  - [qwen/qwen3-max-thinking](https://openrouter.ai/qwen/qwen3-max-thinking)
+  - [moonshotai/kimi-k2.5](https://openrouter.ai/moonshotai/kimi-k2.5)
+  - [deepseek/deepseek-v3.2-speciale](https://openrouter.ai/deepseek/deepseek-v3.2-speciale)
+  - [z-ai/glm-5](https://openrouter.ai/z-ai/glm-5)
+  - [minimax/minimax-m2.7](https://openrouter.ai/minimax/minimax-m2.7)
+- **API Provider**: All models accessed through [OpenRouter](https://openrouter.ai/) with temperature=1.0 and maximum reasoning effort
 - **Protocols**: raw_reasoning, code_generation
-- **Temperature**: 1.0 for all runs
 
 ## Citation
 

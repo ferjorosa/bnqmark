@@ -13,14 +13,38 @@ The dataset consists of three parts:
 """
 
 import os
+import tempfile
 from pathlib import Path
 
 from datasets import Dataset
 from dotenv import load_dotenv
-from huggingface_hub import HfApi, login
+from huggingface_hub import HfApi, create_repo, login
 
 # Hugging Face repository ID
 REPO_ID = "ferjorosa/bnqmark-20"
+
+
+def _delete_existing_dataset_files(api: HfApi, hf_token: str) -> None:
+    """Remove stale dataset files so the Hub viewer cannot infer mixed schemas."""
+    existing_files = api.list_repo_files(
+        repo_id=REPO_ID,
+        repo_type="dataset",
+        token=hf_token,
+    )
+    files_to_delete = [
+        path
+        for path in existing_files
+        if path.endswith(".parquet") or path == "dataset_infos.json"
+    ]
+
+    for path in files_to_delete:
+        print(f"  Removing stale remote file: {path}")
+        api.delete_file(
+            path_in_repo=path,
+            repo_id=REPO_ID,
+            repo_type="dataset",
+            token=hf_token,
+        )
 
 
 def main():
@@ -102,27 +126,44 @@ def main():
         "naming_strategy='simple'"
     )
 
-    # Push each dataset separately as different configs
+    # Upload filtered parquet files to explicit config-specific paths.
     print(f"\nUploading to {REPO_ID}...")
     print("  (Uploading as separate configs: bns, queries, experiments)")
 
     try:
-        # Upload bns config
-        print("\n  Uploading 'bns' config...")
-        bns_dataset.push_to_hub(REPO_ID, config_name="bns", private=False)
-        print("    -> bns uploaded successfully!")
-
-        # Upload queries config
-        print("\n  Uploading 'queries' config...")
-        queries_dataset.push_to_hub(REPO_ID, config_name="queries", private=False)
-        print("    -> queries uploaded successfully!")
-
-        # Upload experiments config
-        print("\n  Uploading 'experiments' config...")
-        experiments_dataset.push_to_hub(
-            REPO_ID, config_name="experiments", private=False
+        api = HfApi()
+        create_repo(
+            repo_id=REPO_ID,
+            repo_type="dataset",
+            private=False,
+            exist_ok=True,
+            token=hf_token,
         )
-        print("    -> experiments uploaded successfully!")
+        _delete_existing_dataset_files(api, hf_token)
+
+        datasets_to_upload = {
+            "bns": bns_dataset,
+            "queries": queries_dataset,
+            "experiments": experiments_dataset,
+        }
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            tmp_path = Path(tmp_dir)
+            for config_name, dataset in datasets_to_upload.items():
+                local_path = tmp_path / config_name / "train.parquet"
+                local_path.parent.mkdir(parents=True, exist_ok=True)
+                dataset.to_parquet(str(local_path))
+
+                path_in_repo = f"data/{config_name}/train.parquet"
+                print(f"\n  Uploading '{config_name}' config to {path_in_repo}...")
+                api.upload_file(
+                    path_or_fileobj=str(local_path),
+                    path_in_repo=path_in_repo,
+                    repo_id=REPO_ID,
+                    repo_type="dataset",
+                    token=hf_token,
+                )
+                print(f"    -> {config_name} uploaded successfully!")
 
         print("\nAll configs uploaded successfully!")
     except Exception as e:
@@ -133,7 +174,6 @@ def main():
     readme_path = Path(__file__).parent / "README.md"
     if readme_path.exists():
         print("\nUploading README.md...")
-        api = HfApi()
         try:
             api.upload_file(
                 path_or_fileobj=str(readme_path),
