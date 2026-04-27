@@ -157,9 +157,8 @@ def generate_library_usage_summary(
                 if model in bucket_counts.index
                 else 0
             )
-            pct_value = count / valid_count if valid_count > 0 else float("nan")
-            accuracy_row[f"pct_{bucket}"] = pct_value
-            mae_sd_row[f"pct_{bucket}"] = pct_value
+            accuracy_row[f"n_{bucket}"] = count
+            mae_sd_row[f"n_{bucket}"] = count
 
             accuracy_row[f"accuracy_{bucket}"] = (
                 accuracy_by_bucket.loc[model, bucket]
@@ -194,19 +193,24 @@ def main():
 
     display_accuracy_df = accuracy_df.copy()
     display_mae_sd_df = mae_sd_df.copy()
-    percent_columns = [f"pct_{bucket}" for bucket in LIBRARY_BUCKETS]
+    count_columns = [f"n_{bucket}" for bucket in LIBRARY_BUCKETS]
     accuracy_columns = [f"accuracy_{bucket}" for bucket in LIBRARY_BUCKETS]
     mae_columns = [f"mae_{bucket}" for bucket in LIBRARY_BUCKETS]
     sd_columns = [f"sd_{bucket}" for bucket in LIBRARY_BUCKETS]
 
-    for column in [*percent_columns, *accuracy_columns]:
+    for column in count_columns:
+        display_accuracy_df[column] = display_accuracy_df[column].apply(
+            lambda x: str(int(x)) if pd.notna(x) else "N/A"
+        )
+
+    for column in accuracy_columns:
         display_accuracy_df[column] = display_accuracy_df[column].apply(
             lambda x: f"{x:.4f}" if pd.notna(x) else "N/A"
         )
 
-    for column in percent_columns:
+    for column in count_columns:
         display_mae_sd_df[column] = display_mae_sd_df[column].apply(
-            lambda x: f"{x:.4f}" if pd.notna(x) else "N/A"
+            lambda x: str(int(x)) if pd.notna(x) else "N/A"
         )
 
     for column in [*mae_columns, *sd_columns]:
