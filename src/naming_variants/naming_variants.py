@@ -25,6 +25,7 @@ from pgmpy.models import DiscreteBayesianNetwork
 
 from src.dag import NamingStrategy
 from src.dag.generation.core.naming import generate_node_names
+from src.utils.bn_utils import get_cpds_list
 
 
 def create_name_mapping_from_strategy(
@@ -91,10 +92,10 @@ def create_bn_naming_variant(
 
     # 2. Create new CPDs with relabeled names
     new_cpds: list[TabularCPD] = []
-    for old_cpd in bn.get_cpds():
+    for old_cpd in get_cpds_list(bn):
         # Map variable name
         old_variable = old_cpd.variable
-        new_variable = name_mapping.get(old_variable, old_variable)
+        new_variable = name_mapping.get(old_variable, old_variable)  # ty: ignore
 
         # Map evidence variables (if any)
         # Use variables[1:] instead of get_evidence() to preserve the order
@@ -116,7 +117,7 @@ def create_bn_naming_variant(
         for old_var_name, state_list in old_cpd.state_names.items():
             new_var_name = name_mapping.get(old_var_name, old_var_name)
             # Keep the same state labels (e.g., 's0', 's1', etc.)
-            new_state_names[new_var_name] = state_list
+            new_state_names[new_var_name] = state_list  # ty: ignore
 
         # Get values in the format expected by TabularCPD
         # Use get_values() which returns proper 2D format
@@ -125,7 +126,7 @@ def create_bn_naming_variant(
         # Create new CPD with same values but new names
         new_cpd = TabularCPD(
             variable=new_variable,
-            variable_card=old_cpd.variable_card,
+            variable_card=old_cpd.variable_card,  # ty: ignore
             values=cpd_values,
             evidence=new_evidence,
             evidence_card=new_evidence_card,

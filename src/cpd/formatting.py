@@ -57,7 +57,7 @@ def cpd_to_ascii_table(cpd: TabularCPD) -> str:
     # Narrow type for state_names (pgmpy is not well typed here)
     state_names = cast(Mapping[str, Sequence[str]], cpd.state_names)
 
-    var_states = list(state_names[var])
+    var_states = list(state_names[var])  # ty: ignore
 
     parents = (
         list(cpd.variables[1:])
