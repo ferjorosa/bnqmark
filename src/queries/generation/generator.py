@@ -17,6 +17,7 @@ import networkx as nx
 import numpy as np
 from pgmpy.models import DiscreteBayesianNetwork
 
+from src.utils.bn_utils import get_cpds_list
 from src.utils.distance_utils import compute_shortest_distance
 
 from .types import QueryGenerationContext, QueryGenerationMetadata, QuerySpec
@@ -33,9 +34,9 @@ def _to_nx_dag(model: DiscreteBayesianNetwork) -> nx.DiGraph:
 def _all_state_labels(model: DiscreteBayesianNetwork) -> dict[str, list[str]]:
     """Extract all possible state labels for each variable in the network."""
     labels: dict[str, list[str]] = {}
-    for cpd in model.get_cpds():
+    for cpd in get_cpds_list(model):
         var = cpd.variable
-        labels[var] = list(cpd.state_names[var])
+        labels[var] = list(cpd.state_names[var])  # ty: ignore
     return labels
 
 
@@ -86,8 +87,8 @@ def _compute_query_probabilities(
         # Compute posterior (with evidence)
         try:
             result = infer.query(
-                variables=query_vars,
-                evidence=evidence,
+                variables=query_vars,  # ty: ignore
+                evidence=evidence,  # ty: ignore
                 show_progress=False,
             )
             assignment = dict(zip(query_vars, query_states, strict=False))
@@ -98,7 +99,7 @@ def _compute_query_probabilities(
         # Compute prior (no evidence)
         try:
             prior_result = infer.query(
-                variables=query_vars,
+                variables=query_vars,  # ty: ignore
                 evidence=None,
                 show_progress=False,
             )

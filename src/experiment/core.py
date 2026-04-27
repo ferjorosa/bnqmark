@@ -23,6 +23,7 @@ from src.queries.formatting.format_query_str import (
     format_discrete_cpds,
     format_probability_query,
 )
+from src.utils.bn_utils import get_cpds_list
 from src.utils.error_utils import is_token_limit_error
 from src.utils.llm import run_llm_call
 
@@ -124,7 +125,7 @@ def run_single_query(
     try:
         # Get BN and format query/CPTs
         bn = bn_map[(bn_uuid, naming_strategy)]
-        cpts = bn.get_cpds()
+        cpts = get_cpds_list(bn)
 
         query_str = format_probability_query(target, evidence=evidence)
         cpts_str = format_discrete_cpds(cpts)

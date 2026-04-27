@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from pgmpy.models import DiscreteBayesianNetwork
 
+from src.utils.bn_utils import get_cpds_list
+
 
 def compare_bn_structures(
     bn1: DiscreteBayesianNetwork,
@@ -56,12 +58,12 @@ def compare_cpt_values(
     Returns:
         True if all CPT values are identical (within numerical precision)
     """
-    cpds1 = {cpd.variable: cpd for cpd in bn1.get_cpds()}
-    cpds2 = {cpd.variable: cpd for cpd in bn2.get_cpds()}
+    cpds1 = {cpd.variable: cpd for cpd in get_cpds_list(bn1)}
+    cpds2 = {cpd.variable: cpd for cpd in get_cpds_list(bn2)}
 
     # Use name_mapping to compare corresponding CPDs
     for old_var, old_cpd in cpds1.items():
-        new_var = name_mapping.get(old_var, old_var)
+        new_var = name_mapping.get(old_var, old_var)  # ty: ignore
         if new_var not in cpds2:
             return False
 
