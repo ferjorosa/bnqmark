@@ -56,6 +56,25 @@ Generate summary statistics tables.
 - Produces LaTeX-ready tables for the paper
 - Supports both raw reasoning and code generation breakdowns
 
+### `code_generation_arithmetic_summary.py`
+
+Summarize static arithmetic complexity in generated code responses.
+
+**Key functionality:**
+- Defaults to manual code-generation rows, excluding pgmpy and pyAgrum solutions
+- Counts explicit Python arithmetic operators using the AST
+- Reports the largest explicit multiplication chain as a proxy for manual factor size
+
+### `plot_manual_ops_heatmap_by_query.py`
+
+Generate a query-by-model heatmap of manual arithmetic operation counts.
+
+**Key functionality:**
+- Rows are sorted by network size, achieved treewidth, induced width, and query structure
+- Columns are models, cell color is the AST-counted operation count
+- Gray cells indicate non-manual code or parse failures
+- Correct and incorrect predictions are overlaid with row-level markers
+
 ### `old/` — Deprecated Scripts
 
 Previous plotting scripts replaced by the grid-based visualizations:
