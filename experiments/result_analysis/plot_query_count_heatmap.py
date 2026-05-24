@@ -114,10 +114,10 @@ def create_heatmap(query_count_matrix: pd.DataFrame) -> plt.Figure:
     """Create a heatmap showing query count."""
     fig, ax = plt.subplots(figsize=FIGURE_SIZE)
 
-    # Create grayscale colormap: white for 0/N/A, darker gray for higher counts
-    colors = ["#FFFFFF", "#E0E0E0", "#BDBDBD", "#757575", "#424242"]
+    # Create purple colormap: white for 0/N/A, darker purple for higher counts
+    colors = ["#FFFFFF", "#E1BEE7", "#BA68C8", "#8E24AA"]
     n_bins = 100
-    cmap = LinearSegmentedColormap.from_list("grayscale", colors, N=n_bins)
+    cmap = LinearSegmentedColormap.from_list("purple", colors, N=n_bins)
 
     # Get max value for color scaling
     max_count = query_count_matrix.max().max()
