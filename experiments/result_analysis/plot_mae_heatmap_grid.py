@@ -7,7 +7,7 @@ MAE = average of |pmodel - ptrue| over all evaluated queries.
 Creates one figure with 3x3 subplots, each showing MAE heatmap for a model.
 Each heatmap shows:
 - Y-axis: network size (n)
-- X-axis: achieved treewidth
+- X-axis: configurable treewidth column (`achieved_tw` or `target_tw`)
 - Cell values: MAE (0-1, where 0 = perfect predictions, higher = worse)
 
 Requires global configuration for naming_strategy and experiment_type.
@@ -24,11 +24,12 @@ from matplotlib.colors import LinearSegmentedColormap
 
 # Configuration - Edit these values to customize the output
 NAMING_STRATEGY = "simple"  # Options: "simple", "descriptive", etc.
-EXPERIMENT_TYPE = "raw_reasoning"  # Options: "raw_reasoning", "code_generation"
+EXPERIMENT_TYPE = "code_generation"  # Options: "raw_reasoning", "code_generation"
+TREEWIDTH_COLUMN = "target_tw"  # Options: "achieved_tw", "target_tw"
 OUTPUT_FORMAT = "pdf"  # Options: "png", "pdf"
 
 # Grid configuration
-FIGURE_SIZE = (18, 16)  # Large figure to accommodate 3x3 grid
+FIGURE_SIZE = (16, 16)  # Large figure to accommodate 3x3 grid
 ANNOT_FONT_SIZE = 8  # Cell value font size
 AXIS_LABEL_FONT_SIZE = 10  # X/Y axis label font size
 AXIS_TICK_FONT_SIZE = 8  # X/Y axis tick label font size
@@ -74,9 +75,11 @@ def calculate_mae_matrix(
     # Filter BNs by the naming_strategy
     bns_filtered = bns_df[bns_df["naming_strategy"] == NAMING_STRATEGY].copy()
 
-    # Create bn_uuid -> (n, achieved_tw) mapping
+    # Create bn_uuid -> (n, selected treewidth) mapping
     bns_unique = bns_filtered.drop_duplicates(subset=["bn_uuid"])
-    bn_metadata = bns_unique.set_index("bn_uuid")[["n", "achieved_tw"]].to_dict("index")
+    bn_metadata = bns_unique.set_index("bn_uuid")[["n", TREEWIDTH_COLUMN]].to_dict(
+        "index"
+    )
 
     # Create query_uuid -> bn_uuid mapping
     query_to_bn = queries_df.set_index("query_uuid")["bn_uuid"].to_dict()
@@ -87,13 +90,13 @@ def calculate_mae_matrix(
     experiments_df["n"] = experiments_df["bn_uuid"].map(
         lambda x: bn_metadata.get(x, {}).get("n")
     )
-    experiments_df["achieved_tw"] = experiments_df["bn_uuid"].map(
-        lambda x: bn_metadata.get(x, {}).get("achieved_tw")
+    experiments_df[TREEWIDTH_COLUMN] = experiments_df["bn_uuid"].map(
+        lambda x: bn_metadata.get(x, {}).get(TREEWIDTH_COLUMN)
     )
 
     # Get all unique network sizes and treewidths
     network_sizes = sorted(experiments_df["n"].dropna().unique())
-    treewidths = sorted(experiments_df["achieved_tw"].dropna().unique())
+    treewidths = sorted(experiments_df[TREEWIDTH_COLUMN].dropna().unique())
 
     # Initialize MAE matrix (rows = n, columns = treewidth)
     mae_matrix = pd.DataFrame(
@@ -107,7 +110,7 @@ def calculate_mae_matrix(
         for tw in treewidths:
             # Filter experiments for this (n, treewidth) combination
             subset = experiments_df[
-                (experiments_df["n"] == n) & (experiments_df["achieved_tw"] == tw)
+                (experiments_df["n"] == n) & (experiments_df[TREEWIDTH_COLUMN] == tw)
             ]
 
             if len(subset) == 0:
@@ -266,7 +269,7 @@ def create_heatmap_subplot(
 
     # Set labels with padding
     ax.set_xlabel(
-        "Achieved Treewidth",
+        "Treewidth",
         fontsize=AXIS_LABEL_FONT_SIZE,
         fontweight="bold",
         labelpad=LABEL_PAD,
@@ -372,6 +375,7 @@ def main():
     print("Configuration:")
     print(f"  • Naming strategy: {NAMING_STRATEGY}")
     print(f"  • Experiment type: {EXPERIMENT_TYPE}")
+    print(f"  • Treewidth column: {TREEWIDTH_COLUMN}")
     print("=" * 70)
     print()
 
