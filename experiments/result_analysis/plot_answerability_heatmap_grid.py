@@ -23,12 +23,12 @@ from matplotlib.colors import LinearSegmentedColormap
 
 # Configuration - Edit these values to customize the output
 NAMING_STRATEGY = "simple"  # Options: "simple", "descriptive", etc.
-EXPERIMENT_TYPE = "code_generation"  # Options: "raw_reasoning", "code_generation"
+EXPERIMENT_TYPE = "raw_reasoning"  # Options: "raw_reasoning", "code_generation"
 TREEWIDTH_COLUMN = "target_tw"  # Options: "achieved_tw", "target_tw"
 OUTPUT_FORMAT = "pdf"  # Options: "png", "pdf"
 
 # Grid configuration
-FIGURE_SIZE = (18, 16)  # Large figure to accommodate 3x3 grid
+FIGURE_SIZE = (16, 16)  # Large figure to accommodate 3x3 grid
 ANNOT_FONT_SIZE = 8  # Cell value font size
 AXIS_LABEL_FONT_SIZE = 10  # X/Y axis label font size
 AXIS_TICK_FONT_SIZE = 8  # X/Y axis tick label font size

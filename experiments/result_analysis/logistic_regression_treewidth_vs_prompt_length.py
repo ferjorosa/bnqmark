@@ -91,6 +91,48 @@ def coefficient_table(result) -> pd.DataFrame:
     return table
 
 
+def compute_mcfadden_r2(result) -> float:
+    """Compute McFadden pseudo-R^2 for a fitted logistic model."""
+    llf = getattr(result, "llf", np.nan)
+    llnull = getattr(result, "llnull", np.nan)
+    if pd.notna(llf) and pd.notna(llnull) and llnull != 0:
+        return 1 - (llf / llnull)
+
+    null_deviance = getattr(result, "null_deviance", np.nan)
+    deviance = getattr(result, "deviance", np.nan)
+    if pd.notna(null_deviance) and pd.notna(deviance) and null_deviance != 0:
+        return 1 - (deviance / null_deviance)
+
+    return np.nan
+
+
+def compute_auc(y_true: pd.Series, y_score: np.ndarray) -> float:
+    """Compute ROC AUC from binary labels and fitted probabilities."""
+    y_true_array = y_true.to_numpy(dtype=int)
+    positive_count = int(y_true_array.sum())
+    negative_count = len(y_true_array) - positive_count
+    if positive_count == 0 or negative_count == 0:
+        return np.nan
+
+    ranks = pd.Series(y_score).rank(method="average").to_numpy()
+    positive_rank_sum = ranks[y_true_array == 1].sum()
+    u_statistic = positive_rank_sum - positive_count * (positive_count + 1) / 2
+    return float(u_statistic / (positive_count * negative_count))
+
+
+def fit_diagnostics(result, df: pd.DataFrame, outcome: str) -> dict[str, float]:
+    """Compute compact in-sample fit diagnostics."""
+    y_true = df[outcome].astype(int)
+    y_score = result.predict(df)
+    y_pred = (y_score >= 0.5).astype(int)
+    return {
+        "mcfadden_r2": compute_mcfadden_r2(result),
+        "auc": compute_auc(y_true, y_score),
+        "brier": float(np.mean((y_score - y_true) ** 2)),
+        "classification_accuracy": float(np.mean(y_pred == y_true)),
+    }
+
+
 def print_dataset_summary(df: pd.DataFrame) -> None:
     """Print compact dataset diagnostics."""
     models = sorted(df["model_name"].unique().tolist())
@@ -128,7 +170,7 @@ def interpret_predictor(result, predictor: str, label: str) -> str:
     )
 
 
-def print_model_results(name: str, result) -> None:
+def print_model_results(name: str, result, df: pd.DataFrame, outcome: str) -> None:
     """Print compact regression output."""
     print(name)
     print("-" * len(name))
@@ -137,6 +179,17 @@ def print_model_results(name: str, result) -> None:
         .round({"coef": 3, "std_err": 3, "p_value": 4, "odds_ratio": 3})
         .to_string()
     )
+    print()
+    diagnostics = fit_diagnostics(result, df, outcome)
+    print("Fit diagnostics")
+    print("---------------")
+    print(f"McFadden pseudo-R^2: {diagnostics['mcfadden_r2']:.3f}")
+    if pd.isna(diagnostics["auc"]):
+        print("AUC: n/a (outcome has a single class)")
+    else:
+        print(f"AUC: {diagnostics['auc']:.3f}")
+    print(f"Brier score: {diagnostics['brier']:.3f}")
+    print(f"Acc (0.5 threshold): {diagnostics['classification_accuracy']:.3f}")
     print()
     print(interpret_predictor(result, "z_treewidth", "Treewidth"))
     print(interpret_predictor(result, "z_input_tokens", "Input tokens"))
@@ -153,8 +206,8 @@ def main() -> None:
     answerable_result = fit_logistic_model(df, "answerable")
     correct_result = fit_logistic_model(df, "correct")
 
-    print_model_results("Answerability regression", answerable_result)
-    print_model_results("Accuracy regression", correct_result)
+    print_model_results("Answerability regression", answerable_result, df, "answerable")
+    print_model_results("Accuracy regression", correct_result, df, "correct")
 
 
 if __name__ == "__main__":

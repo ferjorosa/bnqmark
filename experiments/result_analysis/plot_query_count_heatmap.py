@@ -20,7 +20,7 @@ import seaborn as sns
 from matplotlib.colors import LinearSegmentedColormap
 
 # Heatmap configuration
-FIGURE_SIZE = (12, 10)  # Slightly larger to accommodate bigger fonts
+FIGURE_SIZE = (10, 10)  # Slightly larger to accommodate bigger fonts
 DPI = 300
 TREEWIDTH_COLUMN = "target_tw"  # Options: "achieved_tw", "target_tw"
 OUTPUT_FORMAT = "pdf"  # Options: "png", "pdf"
