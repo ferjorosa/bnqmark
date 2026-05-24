@@ -4,7 +4,7 @@ Script to generate a heatmap showing query count per network size and treewidth.
 
 This is a general data overview showing:
 - Y-axis: network size (n)
-- X-axis: achieved treewidth
+- X-axis: configurable treewidth column (`achieved_tw` or `target_tw`)
 - Cell values: number of unique queries
 
 Uses only queries.parquet and bns.parquet (no experiments data).
@@ -22,6 +22,7 @@ from matplotlib.colors import LinearSegmentedColormap
 # Heatmap configuration
 FIGURE_SIZE = (12, 10)  # Slightly larger to accommodate bigger fonts
 DPI = 300
+TREEWIDTH_COLUMN = "target_tw"  # Options: "achieved_tw", "target_tw"
 OUTPUT_FORMAT = "pdf"  # Options: "png", "pdf"
 
 # Font sizes
@@ -63,22 +64,24 @@ def calculate_query_count_matrix(
     Returns:
         DataFrame with n as index, treewidth as columns, query count as values
     """
-    # Create bn_uuid -> (n, achieved_tw) mapping
+    # Create bn_uuid -> (n, selected treewidth) mapping
     bns_unique = bns_df.drop_duplicates(subset=["bn_uuid"])
-    bn_metadata = bns_unique.set_index("bn_uuid")[["n", "achieved_tw"]].to_dict("index")
+    bn_metadata = bns_unique.set_index("bn_uuid")[["n", TREEWIDTH_COLUMN]].to_dict(
+        "index"
+    )
 
     # Add n and treewidth columns to queries
     queries_df = queries_df.copy()
     queries_df["n"] = queries_df["bn_uuid"].map(
         lambda x: bn_metadata.get(x, {}).get("n")
     )
-    queries_df["achieved_tw"] = queries_df["bn_uuid"].map(
-        lambda x: bn_metadata.get(x, {}).get("achieved_tw")
+    queries_df[TREEWIDTH_COLUMN] = queries_df["bn_uuid"].map(
+        lambda x: bn_metadata.get(x, {}).get(TREEWIDTH_COLUMN)
     )
 
     # Get all unique network sizes and treewidths
     network_sizes = sorted(queries_df["n"].dropna().unique())
-    treewidths = sorted(queries_df["achieved_tw"].dropna().unique())
+    treewidths = sorted(queries_df[TREEWIDTH_COLUMN].dropna().unique())
 
     print(f"Network sizes: {network_sizes}")
     print(f"Treewidths: {treewidths}\n")
@@ -95,7 +98,7 @@ def calculate_query_count_matrix(
         for tw in treewidths:
             # Filter queries for this (n, treewidth) combination
             subset = queries_df[
-                (queries_df["n"] == n) & (queries_df["achieved_tw"] == tw)
+                (queries_df["n"] == n) & (queries_df[TREEWIDTH_COLUMN] == tw)
             ]
 
             if len(subset) == 0:
@@ -172,7 +175,7 @@ def create_heatmap(query_count_matrix: pd.DataFrame) -> plt.Figure:
 
     # Set labels with padding to separate from tick labels
     ax.set_xlabel(
-        "Achieved Treewidth",
+        "Treewidth",
         fontsize=X_AXIS_TITLE_FONT_SIZE,
         fontweight="bold",
         labelpad=LABEL_PAD,
@@ -184,7 +187,7 @@ def create_heatmap(query_count_matrix: pd.DataFrame) -> plt.Figure:
         labelpad=LABEL_PAD,
     )
     ax.set_title(
-        "Number of Queries per Network Size and Achieved Treewidth",
+        "Number of Queries per Network Size and Treewidth",
         fontsize=TITLE_FONT_SIZE,
         fontweight="bold",
         pad=TITLE_PAD,
@@ -223,6 +226,7 @@ def main():
     print("=" * 70)
     print("Generating Query Count Heatmap")
     print("=" * 70)
+    print(f"Treewidth column: {TREEWIDTH_COLUMN}")
     print()
 
     # Get repo root

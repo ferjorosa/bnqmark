@@ -13,6 +13,7 @@ repo_root = Path(__file__).resolve().parents[2]
 # Configuration
 NAMING_STRATEGY = "simple"
 EXPERIMENT_TYPE = "code_generation"
+TREEWIDTH_COLUMN = "target_tw"  # Options: "achieved_tw", "target_tw"
 ACCURACY_THRESHOLD = 0.01
 
 
@@ -48,12 +49,14 @@ def build_analysis_df() -> pd.DataFrame:
     ].copy()
 
     bns_df = bns_df[bns_df["naming_strategy"] == NAMING_STRATEGY][
-        ["bn_uuid", "n", "achieved_tw"]
+        ["bn_uuid", "n", TREEWIDTH_COLUMN]
     ].copy()
 
     df = experiments_df.merge(queries_df, on="query_uuid", how="inner").merge(
         bns_df, on="bn_uuid", how="inner"
     )
+
+    df["treewidth"] = df[TREEWIDTH_COLUMN]
 
     df["answerable"] = df["llm_probability"].notna().astype(int)
     df["abs_error"] = (df["llm_probability"] - df["probability"]).abs()
@@ -61,7 +64,7 @@ def build_analysis_df() -> pd.DataFrame:
         df["llm_probability"].notna() & (df["abs_error"] <= ACCURACY_THRESHOLD)
     ).astype(int)
 
-    df["z_achieved_tw"] = standardize(df["achieved_tw"].astype(float))
+    df["z_treewidth"] = standardize(df["treewidth"].astype(float))
     df["z_input_tokens"] = standardize(df["input_tokens"].astype(float))
     df["z_n"] = standardize(df["n"].astype(float))
 
@@ -70,7 +73,7 @@ def build_analysis_df() -> pd.DataFrame:
 
 def fit_logistic_model(df: pd.DataFrame, outcome: str):
     """Fit a pooled logistic regression with model fixed effects."""
-    formula = f"{outcome} ~ z_achieved_tw + z_input_tokens + z_n + C(model_name)"
+    formula = f"{outcome} ~ z_treewidth + z_input_tokens + z_n + C(model_name)"
     model = smf.glm(formula=formula, data=df, family=Binomial())
     return model.fit()
 
@@ -101,9 +104,7 @@ def print_dataset_summary(df: pd.DataFrame) -> None:
         print(f"  - {model}")
     print()
 
-    summary = df[["achieved_tw", "input_tokens", "n"]].agg(
-        ["mean", "std", "min", "max"]
-    )
+    summary = df[["treewidth", "input_tokens", "n"]].agg(["mean", "std", "min", "max"])
     print("Predictor summary")
     print("-----------------")
     print(summary.round(3).to_string())
@@ -111,7 +112,7 @@ def print_dataset_summary(df: pd.DataFrame) -> None:
 
     print("Predictor correlations")
     print("----------------------")
-    print(df[["achieved_tw", "input_tokens", "n"]].corr().round(3).to_string())
+    print(df[["treewidth", "input_tokens", "n"]].corr().round(3).to_string())
     print()
 
 
@@ -137,7 +138,7 @@ def print_model_results(name: str, result) -> None:
         .to_string()
     )
     print()
-    print(interpret_predictor(result, "z_achieved_tw", "Treewidth"))
+    print(interpret_predictor(result, "z_treewidth", "Treewidth"))
     print(interpret_predictor(result, "z_input_tokens", "Input tokens"))
     print(interpret_predictor(result, "z_n", "Network size (n)"))
     print()
@@ -145,6 +146,7 @@ def print_model_results(name: str, result) -> None:
 
 def main() -> None:
     """Run the pooled logistic-regression analysis."""
+    print(f"Treewidth column: {TREEWIDTH_COLUMN}")
     df = build_analysis_df()
     print_dataset_summary(df)
 
