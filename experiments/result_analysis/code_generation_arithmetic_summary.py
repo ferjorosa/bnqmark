@@ -46,6 +46,13 @@ def classify_code_style(response: str) -> str:
     return "manual"
 
 
+def format_operator_counts(operator_counts: dict[str, int]) -> str:
+    """Format operator counts as a compact string for row-level outputs."""
+    return ", ".join(
+        f"{operator}:{count}" for operator, count in sorted(operator_counts.items())
+    )
+
+
 def add_arithmetic_metrics(experiments_df: pd.DataFrame) -> pd.DataFrame:
     """Add static arithmetic metrics to experiment rows."""
     df = experiments_df.copy()
@@ -55,12 +62,37 @@ def add_arithmetic_metrics(experiments_df: pd.DataFrame) -> pd.DataFrame:
     df["arithmetic_operator_count"] = metrics.apply(
         lambda metric: metric.arithmetic_operator_count
     )
+    df["scalar_operation_count"] = metrics.apply(
+        lambda metric: metric.scalar_operation_count
+    )
+    df["scalar_additions"] = metrics.apply(lambda metric: metric.scalar_additions)
+    df["scalar_subtractions"] = metrics.apply(lambda metric: metric.scalar_subtractions)
+    df["scalar_multiplications"] = metrics.apply(
+        lambda metric: metric.scalar_multiplications
+    )
+    df["scalar_divisions"] = metrics.apply(lambda metric: metric.scalar_divisions)
+    df["uses_vector_operations"] = metrics.apply(
+        lambda metric: metric.uses_vector_operations
+    )
+    df["vector_operation_count"] = metrics.apply(
+        lambda metric: metric.vector_operation_count
+    )
+    df["vector_operation_summary"] = metrics.apply(
+        lambda metric: format_operator_counts(metric.vector_operator_counts)
+    )
     df["largest_factor_size"] = metrics.apply(lambda metric: metric.largest_factor_size)
     df["code_parse_error"] = metrics.apply(lambda metric: metric.parse_error)
 
     for operator in ["+", "-", "*", "/", "//", "%", "**", "@", "unary+", "unary-"]:
         df[f"op_{operator}"] = metrics.apply(
             lambda metric, operator=operator: metric.operator_counts.get(operator, 0)
+        )
+
+    for operator in ["+", "-", "*", "/", "//", "@"]:
+        df[f"vector_op_{operator}"] = metrics.apply(
+            lambda metric, operator=operator: metric.vector_operator_counts.get(
+                operator, 0
+            )
         )
 
     return df
@@ -86,6 +118,16 @@ def generate_arithmetic_summary(
     summary_df = grouped.agg(
         responses=("query_uuid", "count"),
         parse_failures=("code_parse_error", lambda values: values.notna().sum()),
+        vector_operation_rows=("uses_vector_operations", "sum"),
+        mean_scalar_ops=("scalar_operation_count", "mean"),
+        median_scalar_ops=("scalar_operation_count", "median"),
+        max_scalar_ops=("scalar_operation_count", "max"),
+        mean_scalar_additions=("scalar_additions", "mean"),
+        mean_scalar_multiplications=("scalar_multiplications", "mean"),
+        mean_scalar_divisions=("scalar_divisions", "mean"),
+        max_scalar_additions=("scalar_additions", "max"),
+        max_scalar_multiplications=("scalar_multiplications", "max"),
+        max_scalar_divisions=("scalar_divisions", "max"),
         mean_ops=("arithmetic_operator_count", "mean"),
         median_ops=("arithmetic_operator_count", "median"),
         max_ops=("arithmetic_operator_count", "max"),
@@ -110,6 +152,11 @@ def main() -> None:
 
     display_df = summary_df.copy()
     for column in [
+        "mean_scalar_ops",
+        "median_scalar_ops",
+        "mean_scalar_additions",
+        "mean_scalar_multiplications",
+        "mean_scalar_divisions",
         "mean_ops",
         "median_ops",
         "mean_largest_factor",

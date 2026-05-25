@@ -62,7 +62,8 @@ Summarize static arithmetic complexity in generated code responses.
 
 **Key functionality:**
 - Defaults to manual code-generation rows, excluding pgmpy and pyAgrum solutions
-- Counts explicit Python arithmetic operators using the AST
+- Counts explicit Python scalar additions, subtractions, multiplications, and divisions using the AST
+- Flags vectorized arithmetic operations that are not expanded into scalar counts
 - Reports the largest explicit multiplication chain as a proxy for manual factor size
 
 ### `plot_manual_ops_heatmap_by_query.py`
@@ -71,7 +72,8 @@ Generate a query-by-model heatmap of manual arithmetic operation counts.
 
 **Key functionality:**
 - Rows are sorted by network size, achieved treewidth, induced width, and query structure
-- Columns are models, cell color is the AST-counted operation count
+- Columns are models, cell color is the AST-counted scalar operation count
+- Triangle markers indicate vectorized arithmetic was detected
 - Gray cells indicate non-manual code or parse failures
 - Correct and incorrect predictions are overlaid with row-level markers
 

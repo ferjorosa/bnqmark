@@ -150,6 +150,7 @@ def _process_single_query(
     )
     induced_width = complexity.induced_width
     num_eliminated = complexity.num_eliminated_vars
+    total_factor_size = complexity.total_cost
     scalar_additions = complexity.scalar_additions
     scalar_multiplications = complexity.scalar_multiplications
 
@@ -167,6 +168,7 @@ def _process_single_query(
         "prior_probability": prior_prob,
         "induced_width": induced_width,
         "num_eliminated": num_eliminated,
+        "total_factor_size": total_factor_size,
         "scalar_additions": scalar_additions,
         "scalar_multiplications": scalar_multiplications,
         "distance_bucket": str(query.meta.distance_bucket),  # Store as string tuple

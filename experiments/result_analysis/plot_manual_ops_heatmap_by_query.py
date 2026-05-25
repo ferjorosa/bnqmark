@@ -94,7 +94,7 @@ def build_plot_tables(
     queries_df: pd.DataFrame,
     bns_df: pd.DataFrame,
     accuracy_threshold: float,
-) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, list[str]]:
+) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, list[str]]:
     """Build operation, correctness, and sorted query metadata tables."""
     code_df = experiments_df[
         (experiments_df["naming_strategy"] == NAMING_STRATEGY)
@@ -137,10 +137,13 @@ def build_plot_tables(
         metrics_df["llm_probability"] - metrics_df["probability"]
     ).abs()
     metrics_df["is_correct"] = metrics_df["abs_error"] <= accuracy_threshold
-    metrics_df["operation_count"] = metrics_df["arithmetic_operator_count"].where(
+    metrics_df["operation_count"] = metrics_df["scalar_operation_count"].where(
         metrics_df["is_manual_parseable"]
     )
     metrics_df["correctness_marker"] = metrics_df["is_correct"].where(
+        metrics_df["is_manual_parseable"]
+    )
+    metrics_df["vector_operation_marker"] = metrics_df["uses_vector_operations"].where(
         metrics_df["is_manual_parseable"]
     )
 
@@ -160,6 +163,12 @@ def build_plot_tables(
         index="query_uuid",
         columns="model_name",
         values="correctness_marker",
+        aggfunc="first",
+    ).reindex(columns=model_order)
+    vector_operations = metrics_df.pivot_table(
+        index="query_uuid",
+        columns="model_name",
+        values="vector_operation_marker",
         aggfunc="first",
     ).reindex(columns=model_order)
 
@@ -184,6 +193,7 @@ def build_plot_tables(
     return (
         ops.loc[sorted_queries],
         correctness.loc[sorted_queries],
+        vector_operations.loc[sorted_queries],
         query_df,
         model_order,
     )
@@ -192,6 +202,7 @@ def build_plot_tables(
 def plot_heatmap(
     ops: pd.DataFrame,
     correctness: pd.DataFrame,
+    vector_operations: pd.DataFrame,
     query_df: pd.DataFrame,
     model_order: list[str],
     output_dir: Path,
@@ -245,6 +256,8 @@ def plot_heatmap(
     incorrect_mask = correctness.to_numpy(dtype=object) == False  # noqa: E712
     correct_y, correct_x = np.where(correct_mask)
     incorrect_y, incorrect_x = np.where(incorrect_mask)
+    vector_mask = vector_operations.to_numpy(dtype=object) == True  # noqa: E712
+    vector_y, vector_x = np.where(vector_mask)
 
     ax.scatter(
         correct_x,
@@ -265,10 +278,20 @@ def plot_heatmap(
         linewidths=0.45,
         label="Incorrect",
     )
+    ax.scatter(
+        vector_x,
+        vector_y,
+        s=12,
+        marker="^",
+        facecolors="#7B3294",
+        edgecolors="white",
+        linewidths=0.25,
+        label="Vector operation detected",
+    )
 
     cbar = fig.colorbar(image, ax=ax, fraction=0.025, pad=0.02)
     cbar.set_label(
-        f"Arithmetic operations in parseable manual code "
+        f"Scalar arithmetic operations in parseable manual code "
         f"(color capped at p{vmax_percentile:g}={vmax:.0f})"
     )
 
@@ -293,18 +316,29 @@ def plot_heatmap(
             linewidth=0,
             label="Incorrect",
         ),
+        Line2D(
+            [0],
+            [0],
+            marker="^",
+            color="#7B3294",
+            markerfacecolor="#7B3294",
+            markeredgecolor="white",
+            markersize=5,
+            linewidth=0,
+            label="Vector operation detected",
+        ),
     ]
     ax.legend(
         handles=legend_handles,
         loc="upper center",
         bbox_to_anchor=(0.5, -0.035),
-        ncol=3,
+        ncol=4,
         frameon=False,
         fontsize=9,
     )
 
     fig.suptitle(
-        "Manual Arithmetic Operations by Query and Model",
+        "Manual Scalar Arithmetic Operations by Query and Model",
         fontsize=14,
         fontweight="bold",
         y=0.995,
@@ -333,7 +367,7 @@ def main() -> None:
     """Generate the manual operation-count heatmap."""
     args = parse_args()
     experiments_df, queries_df, bns_df = load_inputs(args)
-    ops, correctness, query_df, model_order = build_plot_tables(
+    ops, correctness, vector_operations, query_df, model_order = build_plot_tables(
         experiments_df,
         queries_df,
         bns_df,
@@ -342,6 +376,7 @@ def main() -> None:
     png_path, pdf_path = plot_heatmap(
         ops,
         correctness,
+        vector_operations,
         query_df,
         model_order,
         args.output_dir,

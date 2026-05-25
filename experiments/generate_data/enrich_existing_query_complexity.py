@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Add scalar VE operation counts to an existing query parquet file.
+Add query-complexity metrics to an existing query parquet file.
 
 This script does not regenerate Bayesian networks or queries. It loads existing
 ``bns.parquet`` and ``queries.parquet`` files, recomputes query complexity for
-each stored query, and writes the query rows back with scalar addition and
-multiplication counts.
+each stored query, and writes the query rows back with total factor size plus
+scalar addition and multiplication counts.
 """
 
 from __future__ import annotations
@@ -52,11 +52,12 @@ def _load_bn_lookup(bns_df: pd.DataFrame) -> dict[tuple[str, str], Any]:
 
 
 def enrich_queries(bns_path: Path, queries_path: Path) -> pd.DataFrame:
-    """Return queries with scalar VE operation-count columns added."""
+    """Return queries with VE factor-size and operation-count columns added."""
     bns_df = pd.read_parquet(bns_path)
     queries_df = pd.read_parquet(queries_path)
     bn_lookup = _load_bn_lookup(bns_df)
 
+    total_factor_sizes: list[int] = []
     scalar_additions: list[int] = []
     scalar_multiplications: list[int] = []
 
@@ -74,6 +75,7 @@ def enrich_queries(bns_path: Path, queries_path: Path) -> pd.DataFrame:
             list(evidence.keys()),
             verbose=False,
         )
+        total_factor_sizes.append(metrics.total_cost)
         scalar_additions.append(metrics.scalar_additions)
         scalar_multiplications.append(metrics.scalar_multiplications)
 
@@ -82,6 +84,7 @@ def enrich_queries(bns_path: Path, queries_path: Path) -> pd.DataFrame:
             print(f"  Processed {processed}/{total} queries")
 
     enriched_df = queries_df.copy()
+    enriched_df["total_factor_size"] = total_factor_sizes
     enriched_df["scalar_additions"] = scalar_additions
     enriched_df["scalar_multiplications"] = scalar_multiplications
     return enriched_df
@@ -123,6 +126,11 @@ def main() -> None:
     tmp_path.replace(output_path)
 
     print(f"Saved {len(enriched_df)} enriched query rows to {output_path}")
+    print(
+        "Total factor size range: "
+        f"{enriched_df['total_factor_size'].min()}-"
+        f"{enriched_df['total_factor_size'].max()}",
+    )
     print(
         "Scalar additions range: "
         f"{enriched_df['scalar_additions'].min()}-"
