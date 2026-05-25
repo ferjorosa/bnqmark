@@ -27,7 +27,7 @@ Generate conditional probability queries from Bayesian networks.
 - Stratifies by minimum distance between target and evidence (1, 2, or 3 edges)
 - Applies informativeness filtering: `|P(Q|E) - P(Q)| >= 0.1`
 - Computes ground truth probabilities using exact variable elimination
-- Records structural properties (induced width, eliminated variables, distances)
+- Records structural properties and complexity metrics (induced width, eliminated variables, scalar additions/multiplications, distances)
 - Exports to `data/queries.parquet`
 
 **Main function:**
