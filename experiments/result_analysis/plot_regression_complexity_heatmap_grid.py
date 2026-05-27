@@ -56,6 +56,8 @@ AXIS_LABEL_FONT_SIZE = 10
 AXIS_TICK_FONT_SIZE = 8
 TITLE_FONT_SIZE = 12
 ACCURACY_THRESHOLD = 0.01
+TREEWIDTH_COLUMN = "target_tw"
+TREEWIDTH_LABEL = "Treewidth"
 
 
 def parse_args() -> argparse.Namespace:
@@ -91,10 +93,16 @@ def parse_args() -> argparse.Namespace:
         default="all",
     )
     parser.add_argument("--naming-strategy", default="simple")
+    parser.add_argument(
+        "--treewidth-column",
+        choices=["target_tw", "achieved_tw"],
+        default=TREEWIDTH_COLUMN,
+        help="BN metadata column used for the treewidth axis.",
+    )
     return parser.parse_args()
 
 
-def load_data(data_dir: Path) -> pd.DataFrame:
+def load_data(data_dir: Path, treewidth_column: str) -> pd.DataFrame:
     """Load and merge experiment, query, and BN metadata."""
     experiments = pd.read_parquet(
         data_dir / "experiments.parquet",
@@ -117,8 +125,9 @@ def load_data(data_dir: Path) -> pd.DataFrame:
     )
     bns = pd.read_parquet(
         data_dir / "bns.parquet",
-        columns=["bn_uuid", "achieved_tw"],
+        columns=["bn_uuid", treewidth_column],
     ).drop_duplicates(subset=["bn_uuid"])
+    bns = bns.rename(columns={treewidth_column: "treewidth"})
 
     merged = experiments.merge(queries, on="query_uuid", how="inner")
     merged = merged.merge(bns, on="bn_uuid", how="inner")
@@ -133,7 +142,7 @@ def load_data(data_dir: Path) -> pd.DataFrame:
 
 def calculate_matrix(model_df: pd.DataFrame, metric: str) -> pd.DataFrame:
     """Calculate one metric matrix for a single model."""
-    treewidths = sorted(model_df["achieved_tw"].dropna().unique())
+    treewidths = sorted(model_df["treewidth"].dropna().unique())
     matrix = pd.DataFrame(
         index=pd.CategoricalIndex(
             FACTOR_SIZE_LABELS,
@@ -149,7 +158,7 @@ def calculate_matrix(model_df: pd.DataFrame, metric: str) -> pd.DataFrame:
         for tw in treewidths:
             subset = model_df[
                 (model_df["factor_size_bin"] == factor_bin)
-                & (model_df["achieved_tw"] == tw)
+                & (model_df["treewidth"] == tw)
             ]
             if subset.empty:
                 matrix.loc[factor_bin, int(tw)] = -1
@@ -161,8 +170,7 @@ def calculate_matrix(model_df: pd.DataFrame, metric: str) -> pd.DataFrame:
                 continue
 
             valid = subset[
-                subset["llm_probability"].notna()
-                & (subset["llm_probability"] != -1000)
+                subset["llm_probability"].notna() & (subset["llm_probability"] != -1000)
             ].copy()
 
             if metric == "answerability":
@@ -279,7 +287,7 @@ def create_subplot(
             )
 
     ax.set_xlabel(
-        "Achieved treewidth",
+        TREEWIDTH_LABEL,
         fontsize=AXIS_LABEL_FONT_SIZE,
         fontweight="bold",
         labelpad=8,
@@ -365,9 +373,7 @@ def main() -> None:
     """Generate requested heatmaps."""
     args = parse_args()
     metrics = (
-        ["answerability", "accuracy", "mae"]
-        if args.metric == "all"
-        else [args.metric]
+        ["answerability", "accuracy", "mae"] if args.metric == "all" else [args.metric]
     )
     protocols = (
         ["raw_reasoning", "code_generation"]
@@ -375,7 +381,8 @@ def main() -> None:
         else [args.protocol]
     )
 
-    data = load_data(args.data_dir)
+    print(f"Treewidth column: {args.treewidth_column}")
+    data = load_data(args.data_dir, args.treewidth_column)
     for metric in metrics:
         for protocol in protocols:
             generate_one(data, metric, protocol, args.naming_strategy, args.output_dir)
