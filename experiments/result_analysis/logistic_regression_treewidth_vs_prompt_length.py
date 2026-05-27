@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Pooled logistic regressions for accuracy and answerability."""
 
+import argparse
 from pathlib import Path
 
 import numpy as np
@@ -23,9 +24,8 @@ PREDICTORS = {
 }
 
 
-def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_data(data_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Load experiments, queries, and BN metadata from parquet."""
-    data_dir = repo_root / "data"
     experiments_df = pd.read_parquet(data_dir / "experiments.parquet")
     queries_df = pd.read_parquet(data_dir / "queries.parquet")
     bns_df = pd.read_parquet(data_dir / "bns.parquet")
@@ -40,9 +40,9 @@ def standardize(series: pd.Series) -> pd.Series:
     return (series - series.mean()) / std
 
 
-def build_analysis_df() -> pd.DataFrame:
+def build_analysis_df(data_dir: Path = repo_root / "data") -> pd.DataFrame:
     """Create one supported query x model row for the configured experiment."""
-    experiments_df, queries_df, bns_df = load_data()
+    experiments_df, queries_df, bns_df = load_data(data_dir)
 
     experiments_df = experiments_df[
         (experiments_df["naming_strategy"] == NAMING_STRATEGY)
@@ -334,10 +334,29 @@ def print_per_model_results(title: str, diagnostics: pd.DataFrame, coefs: pd.Dat
     print()
 
 
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        default=repo_root / "data",
+        help=(
+            "Directory containing experiments.parquet, queries.parquet, "
+            "and bns.parquet."
+        ),
+    )
+    return parser.parse_args()
+
+
 def main() -> None:
     """Run the pooled logistic-regression analysis."""
+    args = parse_args()
+    data_dir = args.data_dir
+
     print(f"Treewidth column: {TREEWIDTH_COLUMN}")
-    df = build_analysis_df()
+    print(f"Data directory: {data_dir}")
+    df = build_analysis_df(data_dir)
     print_dataset_summary(df)
 
     answerable_result = fit_logistic_model(df, "answerable")
