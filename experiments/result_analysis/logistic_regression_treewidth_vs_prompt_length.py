@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-"""Pooled logistic regressions for treewidth vs prompt length."""
+"""Pooled logistic regressions for accuracy and answerability."""
 
+import argparse
 from pathlib import Path
 
 import numpy as np
@@ -15,11 +16,16 @@ NAMING_STRATEGY = "simple"
 EXPERIMENT_TYPE = "code_generation"
 TREEWIDTH_COLUMN = "target_tw"  # Options: "achieved_tw", "target_tw"
 ACCURACY_THRESHOLD = 0.01
+PREDICTORS = {
+    "z_treewidth": "Treewidth",
+    "z_input_tokens": "Input tokens",
+    "z_n": "Network size (n)",
+    "z_total_factor_size": "Total factor size",
+}
 
 
-def load_data() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_data(data_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Load experiments, queries, and BN metadata from parquet."""
-    data_dir = repo_root / "data"
     experiments_df = pd.read_parquet(data_dir / "experiments.parquet")
     queries_df = pd.read_parquet(data_dir / "queries.parquet")
     bns_df = pd.read_parquet(data_dir / "bns.parquet")
@@ -34,9 +40,9 @@ def standardize(series: pd.Series) -> pd.Series:
     return (series - series.mean()) / std
 
 
-def build_analysis_df() -> pd.DataFrame:
-    """Create one supported query x model row for raw reasoning."""
-    experiments_df, queries_df, bns_df = load_data()
+def build_analysis_df(data_dir: Path = repo_root / "data") -> pd.DataFrame:
+    """Create one supported query x model row for the configured experiment."""
+    experiments_df, queries_df, bns_df = load_data(data_dir)
 
     experiments_df = experiments_df[
         (experiments_df["naming_strategy"] == NAMING_STRATEGY)
@@ -44,8 +50,14 @@ def build_analysis_df() -> pd.DataFrame:
         & (experiments_df["llm_probability"] != -1000)
     ].copy()
 
-    queries_df = queries_df[queries_df["naming_strategy"] == NAMING_STRATEGY][
-        ["query_uuid", "bn_uuid", "probability"]
+    queries_df = queries_df[queries_df["naming_strategy"] == NAMING_STRATEGY].copy()
+    if "total_factor_size" not in queries_df.columns:
+        raise KeyError(
+            "queries.parquet is missing 'total_factor_size'. Run "
+            "experiments/generate_data/enrich_existing_query_complexity.py first."
+        )
+    queries_df = queries_df[
+        ["query_uuid", "bn_uuid", "probability", "total_factor_size"]
     ].copy()
 
     bns_df = bns_df[bns_df["naming_strategy"] == NAMING_STRATEGY][
@@ -67,13 +79,21 @@ def build_analysis_df() -> pd.DataFrame:
     df["z_treewidth"] = standardize(df["treewidth"].astype(float))
     df["z_input_tokens"] = standardize(df["input_tokens"].astype(float))
     df["z_n"] = standardize(df["n"].astype(float))
+    df["z_total_factor_size"] = standardize(df["total_factor_size"].astype(float))
 
     return df
 
 
-def fit_logistic_model(df: pd.DataFrame, outcome: str):
-    """Fit a pooled logistic regression with model fixed effects."""
-    formula = f"{outcome} ~ z_treewidth + z_input_tokens + z_n + C(model_name)"
+def fit_logistic_model(
+    df: pd.DataFrame,
+    outcome: str,
+    *,
+    include_model_fixed_effects: bool = True,
+):
+    """Fit a logistic regression with optional model fixed effects."""
+    formula = f"{outcome} ~ {' + '.join(PREDICTORS)}"
+    if include_model_fixed_effects:
+        formula += " + C(model_name)"
     model = smf.glm(formula=formula, data=df, family=Binomial())
     return model.fit()
 
@@ -125,11 +145,14 @@ def fit_diagnostics(result, df: pd.DataFrame, outcome: str) -> dict[str, float]:
     y_true = df[outcome].astype(int)
     y_score = result.predict(df)
     y_pred = (y_score >= 0.5).astype(int)
+    outcome_rate = float(y_true.mean())
     return {
+        "outcome_rate": outcome_rate,
         "mcfadden_r2": compute_mcfadden_r2(result),
         "auc": compute_auc(y_true, y_score),
         "brier": float(np.mean((y_score - y_true) ** 2)),
         "classification_accuracy": float(np.mean(y_pred == y_true)),
+        "majority_accuracy": max(outcome_rate, 1 - outcome_rate),
     }
 
 
@@ -146,7 +169,8 @@ def print_dataset_summary(df: pd.DataFrame) -> None:
         print(f"  - {model}")
     print()
 
-    summary = df[["treewidth", "input_tokens", "n"]].agg(["mean", "std", "min", "max"])
+    predictor_columns = ["treewidth", "input_tokens", "n", "total_factor_size"]
+    summary = df[predictor_columns].agg(["mean", "std", "min", "max"])
     print("Predictor summary")
     print("-----------------")
     print(summary.round(3).to_string())
@@ -154,7 +178,7 @@ def print_dataset_summary(df: pd.DataFrame) -> None:
 
     print("Predictor correlations")
     print("----------------------")
-    print(df[["treewidth", "input_tokens", "n"]].corr().round(3).to_string())
+    print(df[predictor_columns].corr().round(3).to_string())
     print()
 
 
@@ -183,6 +207,8 @@ def print_model_results(name: str, result, df: pd.DataFrame, outcome: str) -> No
     diagnostics = fit_diagnostics(result, df, outcome)
     print("Fit diagnostics")
     print("---------------")
+    print(f"Outcome rate: {diagnostics['outcome_rate']:.3f}")
+    print(f"Majority-class acc: {diagnostics['majority_accuracy']:.3f}")
     print(f"McFadden pseudo-R^2: {diagnostics['mcfadden_r2']:.3f}")
     if pd.isna(diagnostics["auc"]):
         print("AUC: n/a (outcome has a single class)")
@@ -191,16 +217,146 @@ def print_model_results(name: str, result, df: pd.DataFrame, outcome: str) -> No
     print(f"Brier score: {diagnostics['brier']:.3f}")
     print(f"Acc (0.5 threshold): {diagnostics['classification_accuracy']:.3f}")
     print()
-    print(interpret_predictor(result, "z_treewidth", "Treewidth"))
-    print(interpret_predictor(result, "z_input_tokens", "Input tokens"))
-    print(interpret_predictor(result, "z_n", "Network size (n)"))
+    for predictor, label in PREDICTORS.items():
+        print(interpret_predictor(result, predictor, label))
     print()
+
+
+def build_per_model_tables(
+    df: pd.DataFrame,
+    outcome: str,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Fit one logistic model per model_name and return diagnostics and coefficients."""
+    diagnostic_rows = []
+    coefficient_rows = []
+
+    for model_name in sorted(df["model_name"].unique()):
+        model_df = df[df["model_name"] == model_name].copy()
+        y_true = model_df[outcome].astype(int)
+        if y_true.nunique() < 2:
+            outcome_rate = float(y_true.mean())
+            diagnostic_rows.append(
+                {
+                    "model_name": model_name,
+                    "rows": len(model_df),
+                    "outcome_rate": outcome_rate,
+                    "majority_accuracy": max(outcome_rate, 1 - outcome_rate),
+                    "mcfadden_r2": np.nan,
+                    "auc": np.nan,
+                    "brier": np.nan,
+                    "classification_accuracy": np.nan,
+                    "status": "single outcome class",
+                }
+            )
+            continue
+
+        result = fit_logistic_model(
+            model_df,
+            outcome,
+            include_model_fixed_effects=False,
+        )
+        diagnostics = fit_diagnostics(result, model_df, outcome)
+        diagnostic_rows.append(
+            {
+                "model_name": model_name,
+                "rows": len(model_df),
+                "outcome_rate": diagnostics["outcome_rate"],
+                "majority_accuracy": diagnostics["majority_accuracy"],
+                "mcfadden_r2": diagnostics["mcfadden_r2"],
+                "auc": diagnostics["auc"],
+                "brier": diagnostics["brier"],
+                "classification_accuracy": diagnostics["classification_accuracy"],
+                "status": "ok",
+            }
+        )
+
+        coefficients = coefficient_table(result)
+        for predictor, label in PREDICTORS.items():
+            coefficient_rows.append(
+                {
+                    "model_name": model_name,
+                    "predictor": label,
+                    "coef": coefficients.loc[predictor, "coef"],
+                    "odds_ratio": coefficients.loc[predictor, "odds_ratio"],
+                    "p_value": coefficients.loc[predictor, "p_value"],
+                }
+            )
+
+    return pd.DataFrame(diagnostic_rows), pd.DataFrame(coefficient_rows)
+
+
+def print_per_model_results(title: str, diagnostics: pd.DataFrame, coefs: pd.DataFrame):
+    """Print compact per-model logistic regression summaries."""
+    print(title)
+    print("-" * len(title))
+    print("Diagnostics")
+    print("-----------")
+    diagnostic_columns = [
+        "model_name",
+        "rows",
+        "outcome_rate",
+        "majority_accuracy",
+        "classification_accuracy",
+        "auc",
+        "mcfadden_r2",
+        "brier",
+        "status",
+    ]
+    print(
+        diagnostics[diagnostic_columns]
+        .round(
+            {
+                "outcome_rate": 3,
+                "majority_accuracy": 3,
+                "classification_accuracy": 3,
+                "auc": 3,
+                "mcfadden_r2": 3,
+                "brier": 3,
+            }
+        )
+        .to_string(index=False)
+    )
+    print()
+
+    if coefs.empty:
+        print(
+            "No per-model coefficient tables; "
+            "every model had a single outcome class."
+        )
+        print()
+        return
+
+    print("Predictor coefficients")
+    print("----------------------")
+    print(
+        coefs.round({"coef": 3, "odds_ratio": 3, "p_value": 4}).to_string(index=False)
+    )
+    print()
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--data-dir",
+        type=Path,
+        default=repo_root / "data",
+        help=(
+            "Directory containing experiments.parquet, queries.parquet, "
+            "and bns.parquet."
+        ),
+    )
+    return parser.parse_args()
 
 
 def main() -> None:
     """Run the pooled logistic-regression analysis."""
+    args = parse_args()
+    data_dir = args.data_dir
+
     print(f"Treewidth column: {TREEWIDTH_COLUMN}")
-    df = build_analysis_df()
+    print(f"Data directory: {data_dir}")
+    df = build_analysis_df(data_dir)
     print_dataset_summary(df)
 
     answerable_result = fit_logistic_model(df, "answerable")
@@ -208,6 +364,23 @@ def main() -> None:
 
     print_model_results("Answerability regression", answerable_result, df, "answerable")
     print_model_results("Accuracy regression", correct_result, df, "correct")
+
+    answerable_diagnostics, answerable_coefs = build_per_model_tables(
+        df,
+        "answerable",
+    )
+    correct_diagnostics, correct_coefs = build_per_model_tables(df, "correct")
+
+    print_per_model_results(
+        "Per-model answerability regressions",
+        answerable_diagnostics,
+        answerable_coefs,
+    )
+    print_per_model_results(
+        "Per-model accuracy regressions",
+        correct_diagnostics,
+        correct_coefs,
+    )
 
 
 if __name__ == "__main__":

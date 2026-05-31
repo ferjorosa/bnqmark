@@ -33,6 +33,12 @@ class ComplexityMetrics:
         max_factor_size: Largest intermediate factor encountered
         avg_factor_size: Average size of factors during elimination
         factor_sizes: List of factor sizes for each elimination step
+        scalar_additions: Total scalar additions for dense tabular VE
+        scalar_multiplications: Total scalar multiplications for dense tabular VE
+        scalar_additions_by_step: Scalar additions for each elimination step
+        scalar_multiplications_by_step: Scalar multiplications for each step
+        final_join_multiplications: Scalar multiplications in the final factor join
+        normalization_additions: Scalar additions needed to normalize target values
         log_total_cost: Log2 of total cost
         log_max_factor_size: Log2 of max factor size
         keep_vars: Sorted list of variables kept (targets)
@@ -73,6 +79,12 @@ class ComplexityMetrics:
     max_factor_size: int
     avg_factor_size: float
     factor_sizes: list[int]
+    scalar_additions: int
+    scalar_multiplications: int
+    scalar_additions_by_step: list[int]
+    scalar_multiplications_by_step: list[int]
+    final_join_multiplications: int
+    normalization_additions: int
     log_total_cost: float
     log_max_factor_size: float
 

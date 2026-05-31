@@ -55,6 +55,8 @@ def compute_query_complexity(bn, target_nodes, evidence_nodes, verbose=False):
             - induced_width: Induced width of elimination order
             - total_cost: Total computational cost (sum of factor sizes)
             - max_factor_size: Maximum intermediate factor size
+            - scalar_additions: Total scalar additions for dense tabular VE
+            - scalar_multiplications: Total scalar multiplications for dense tabular VE
             - elimination_order: Optimal elimination order
             - log_total_cost: Log2 of total cost
             - log_max_factor_size: Log2 of max factor size
@@ -196,6 +198,12 @@ def compute_query_complexity(bn, target_nodes, evidence_nodes, verbose=False):
         max_factor_size=elim_results["max_factor_size"],
         avg_factor_size=(elim_results["cost"] / len(elim_order) if elim_order else 0),
         factor_sizes=elim_results["factor_sizes"],
+        scalar_additions=elim_results["scalar_additions"],
+        scalar_multiplications=elim_results["scalar_multiplications"],
+        scalar_additions_by_step=elim_results["scalar_additions_by_step"],
+        scalar_multiplications_by_step=elim_results["scalar_multiplications_by_step"],
+        final_join_multiplications=elim_results["final_join_multiplications"],
+        normalization_additions=elim_results["normalization_additions"],
         log_total_cost=(
             np.log2(elim_results["cost"]) if elim_results["cost"] > 0 else 0
         ),
@@ -221,6 +229,10 @@ def compute_query_complexity(bn, target_nodes, evidence_nodes, verbose=False):
         logger.debug(f"  Total factor work: {elim_results['cost']:,}")
         logger.debug(
             f"  Max intermediate factor size: {elim_results['max_factor_size']:,}",
+        )
+        logger.debug(f"  Scalar additions: {elim_results['scalar_additions']:,}")
+        logger.debug(
+            f"  Scalar multiplications: {elim_results['scalar_multiplications']:,}",
         )
         avg_size = elim_results["cost"] / len(elim_order) if elim_order else 0
         logger.debug(f"  Average factor size: {avg_size:.1f}")
