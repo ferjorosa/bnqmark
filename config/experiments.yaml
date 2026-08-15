@@ -1,6 +1,9 @@
-# We set temperatur to 0.0 following the advice of https://arxiv.org/pdf/2402.05201
-# Nevertheless, authors comment that changes in temperature from 0.0 to 1.0 do not have
-# a statistically significant effect on the problemsolving performance of LLMs
+# NOTE: although we set temperature 0.0 in the configuration all models evaluated are reasoning 
+# models whose sampling temperature is fixed at 1.0 (OpenAI reasoning models only support temperature 1;
+# Anthropic 4.6+ ignores sampling parameters; OpenRouter's default is also 1.0), so the
+# requested value has no effect on the effective sampling temperature.
+#
+# See https://openrouter.ai/docs/api_reference/parameters for temperature defaults/semantics.
 
 llm_models:
 
