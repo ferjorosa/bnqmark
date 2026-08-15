@@ -29,6 +29,13 @@ queries = load_dataset("ferjorosa/bnqmark-20", "queries")["train"]
 experiments = load_dataset("ferjorosa/bnqmark-20", "experiments")["train"]
 ```
 
+To download the parquet files directly (as expected by the result-analysis
+scripts in `experiments/result_analysis/`), use the bundled helper script:
+
+```bash
+python download_bnqmark_20.py
+```
+
 The dataset includes:
 - 78 Bayesian networks (4-20 binary variables)
 - 434 conditional probability queries
