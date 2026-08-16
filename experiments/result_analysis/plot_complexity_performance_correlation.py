@@ -86,6 +86,12 @@ def parse_args() -> argparse.Namespace:
         default=ACCURACY_THRESHOLD,
         help="Absolute-error threshold for accuracy.",
     )
+    parser.add_argument(
+        "--metrics",
+        choices=["accuracy", "answerability", "both"],
+        default="accuracy",
+        help="Which metric row(s) to plot. Defaults to accuracy only to save space.",
+    )
     return parser.parse_args()
 
 
@@ -230,49 +236,58 @@ def plot_panel(
 
 
 def main() -> None:
-    """Generate the 2x2 complexity-performance correlation figure."""
+    """Generate the complexity-performance correlation figure."""
     args = parse_args()
     data = load_data(args.data_dir, args.treewidth_column)
     data = data[data["naming_strategy"] == args.naming_strategy].copy()
     if data.empty:
         raise ValueError(f"No rows for naming_strategy={args.naming_strategy!r}")
 
+    selected_metrics = (
+        ["accuracy", "answerability"] if args.metrics == "both" else [args.metrics]
+    )
+
     supported = data[data["llm_probability"] != -1000]
     treewidths = sorted(supported["treewidth"].dropna().unique())
 
-    summaries: dict[tuple[str, str], pd.DataFrame] = {}
-    for protocol in PROTOCOLS:
-        protocol_df = supported[supported["experiment_type"] == protocol]
-        summaries[(protocol, "treewidth")] = binned_metrics(
-            protocol_df, "treewidth", treewidths, args.accuracy_threshold
-        )
-        summaries[(protocol, "factor")] = binned_metrics(
-            protocol_df, "factor_size_bin", FACTOR_SIZE_LABELS, args.accuracy_threshold
-        )
+    summaries: dict[tuple[str, str, str], pd.DataFrame] = {}
+    for metric in selected_metrics:
+        for protocol in PROTOCOLS:
+            protocol_df = supported[supported["experiment_type"] == protocol]
+            summaries[(metric, protocol, "treewidth")] = binned_metrics(
+                protocol_df, "treewidth", treewidths, args.accuracy_threshold
+            )
+            summaries[(metric, protocol, "factor")] = binned_metrics(
+                protocol_df, "factor_size_bin", FACTOR_SIZE_LABELS, args.accuracy_threshold
+            )
 
-    fig, axes = plt.subplots(2, 2, figsize=FIGURE_SIZE, sharey=True, sharex=False)
+    nrows = len(selected_metrics)
+    figsize = (FIGURE_SIZE[0], FIGURE_SIZE[1] * nrows / 2)
+    fig, axes = plt.subplots(nrows, 2, figsize=figsize, sharey=True, sharex=False)
     fig.subplots_adjust(hspace=0.45)
-    panels = [
-        ("accuracy", "treewidth", "Treewidth", False),
-        ("accuracy", "factor", "Total factor size", True),
-        ("answerability", "treewidth", "Treewidth", False),
-        ("answerability", "factor", "Total factor size", True),
-    ]
+    axes = np.atleast_2d(axes)
 
-    for ax, (metric, axis, xlabel, categorical) in zip(
-        axes.ravel(), panels, strict=True
-    ):
-        bins = treewidths if axis == "treewidth" else FACTOR_SIZE_LABELS
-        summary = {protocol: summaries[(protocol, axis)] for protocol in PROTOCOLS}
-        plot_panel(ax, summary, metric, bins, categorical=categorical)
-        ax.set_xlabel(xlabel, fontsize=LABEL_FONT_SIZE, fontweight="bold")
-        if axis == "treewidth":
-            ax.set_ylabel(metric.capitalize(), fontsize=LABEL_FONT_SIZE, fontweight="bold")
-        ax.set_title(
-            f"{metric.capitalize()} vs {axis.replace('_', ' ')}",
-            fontsize=TITLE_FONT_SIZE,
-            fontweight="bold",
-        )
+    panels = [
+        ("treewidth", "Treewidth", False),
+        ("factor", "Total factor size", True),
+    ]
+    for i, metric in enumerate(selected_metrics):
+        for (axis, xlabel, categorical), ax in zip(panels, axes[i], strict=True):
+            bins = treewidths if axis == "treewidth" else FACTOR_SIZE_LABELS
+            summary = {
+                protocol: summaries[(metric, protocol, axis)] for protocol in PROTOCOLS
+            }
+            plot_panel(ax, summary, metric, bins, categorical=categorical)
+            ax.set_xlabel(xlabel, fontsize=LABEL_FONT_SIZE, fontweight="bold")
+            if axis == "treewidth":
+                ax.set_ylabel(
+                    metric.capitalize(), fontsize=LABEL_FONT_SIZE, fontweight="bold"
+                )
+            ax.set_title(
+                f"{metric.capitalize()} vs {axis.replace('_', ' ')}",
+                fontsize=TITLE_FONT_SIZE,
+                fontweight="bold",
+            )
 
     handles, labels = axes[0, 0].get_legend_handles_labels()
     fig.legend(
@@ -282,10 +297,10 @@ def main() -> None:
         ncol=2,
         fontsize=LEGEND_FONT_SIZE,
         frameon=False,
-        bbox_to_anchor=(0.5, 1.01),
+        bbox_to_anchor=(0.5, 1.04),
     )
 
-    fig.tight_layout(rect=(0, 0, 1, 0.96))
+    fig.tight_layout(rect=(0, 0, 1, 0.92))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(args.output, bbox_inches="tight")
     jpeg_path = args.output.with_suffix(".jpg")
