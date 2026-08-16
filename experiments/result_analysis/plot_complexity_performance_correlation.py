@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Plot pooled accuracy/answerability vs complexity axes for the main text.
+"""Plot pooled accuracy AND answerability on shared panels (4 lines total).
 
-2x2 panel grid: rows are metrics (accuracy, answerability), columns are
-complexity axes (treewidth, total factor size). Each panel draws one line per
-protocol (raw reasoning, code generation), pooled over all supported
-(query, model) rows within each bin, with Wilson 95% confidence intervals.
-This is the summarizing figure that makes Section 6.3 comprehensible
-without consulting the appendix.
+Single-row, two-panel figure: columns are the complexity axes (treewidth,
+total factor size). Each panel draws four lines --- {accuracy, answerability} x
+{raw reasoning, code generation} --- pooled over all supported (query, model)
+rows within each bin, with Wilson 95% confidence intervals.
+
+Metric is encoded by line style/marker (accuracy = solid circles,
+answerability = dashed triangles); protocol is encoded by color (raw
+reasoning = red, code generation = blue). This is a single-row, space-saving
+version that stacks the two metrics on shared panels instead of using two rows.
 """
 
 from __future__ import annotations
@@ -29,6 +32,12 @@ PROTOCOL_LABELS = {
 }
 PROTOCOL_COLORS = {"raw_reasoning": "#C44E52", "code_generation": "#4C72B0"}
 
+METRICS = ["accuracy", "answerability"]
+METRIC_STYLES = {
+    "accuracy": {"linestyle": "-", "marker": "o", "label": "Accuracy"},
+    "answerability": {"linestyle": "--", "marker": "^", "label": "Answerability"},
+}
+
 FACTOR_SIZE_BINS = [0, 16, 32, 64, 128, 256, 512, 1024, 4096, 10**12]
 FACTOR_SIZE_LABELS = [
     "<=16",
@@ -42,7 +51,7 @@ FACTOR_SIZE_LABELS = [
     ">4k",
 ]
 
-FIGURE_SIZE = (7.32, 4.2)
+FIGURE_SIZE = (7.32, 2.5)
 TITLE_FONT_SIZE = 8
 LABEL_FONT_SIZE = 7
 TICK_FONT_SIZE = 6
@@ -85,12 +94,6 @@ def parse_args() -> argparse.Namespace:
         type=float,
         default=ACCURACY_THRESHOLD,
         help="Absolute-error threshold for accuracy.",
-    )
-    parser.add_argument(
-        "--metrics",
-        choices=["accuracy", "answerability", "both"],
-        default="accuracy",
-        help="Which metric row(s) to plot. Defaults to accuracy only to save space.",
     )
     return parser.parse_args()
 
@@ -177,13 +180,12 @@ def binned_metrics(
 
 def plot_panel(
     ax: plt.Axes,
-    summary: dict[str, pd.DataFrame],
-    metric: str,
+    summary: dict[tuple[str, str], pd.DataFrame],
     bins: list,
     *,
     categorical: bool,
 ) -> None:
-    """Draw one panel: metric vs bin, one line per protocol."""
+    """Draw one panel: 4 lines (metric x protocol) vs the complexity axis."""
     positions: dict = {}
     if categorical:
         positions = {bin_value: i for i, bin_value in enumerate(bins)}
@@ -201,26 +203,30 @@ def plot_panel(
         x_axis_labels = x_axis_values
     x_positions = np.array([positions[b] for b in bins], dtype=float)
 
-    for protocol in PROTOCOLS:
-        df = summary[protocol]
-        x = df["bin"].map(positions).to_numpy(dtype=float)
-        y = df[metric].to_numpy(dtype=float)
-        low = df[f"{metric}_low"].to_numpy(dtype=float)
-        high = df[f"{metric}_high"].to_numpy(dtype=float)
-        valid = df["n"].to_numpy() > 0
-        _, _, bars = ax.errorbar(
-            x[valid],
-            y[valid],
-            yerr=[y[valid] - low[valid], high[valid] - y[valid]],
-            marker="o",
-            markersize=3,
-            linewidth=1.2,
-            capsize=2,
-            color=PROTOCOL_COLORS[protocol],
-            label=PROTOCOL_LABELS[protocol],
-        )
-        for bar in bars:
-            bar.set_alpha(0.35)
+    for metric in METRICS:
+        style = METRIC_STYLES[metric]
+        for protocol in PROTOCOLS:
+            df = summary[(metric, protocol)]
+            x = df["bin"].map(positions).to_numpy(dtype=float)
+            y = df[metric].to_numpy(dtype=float)
+            low = df[f"{metric}_low"].to_numpy(dtype=float)
+            high = df[f"{metric}_high"].to_numpy(dtype=float)
+            valid = df["n"].to_numpy() > 0
+            _, _, bars = ax.errorbar(
+                x[valid],
+                y[valid],
+                yerr=[y[valid] - low[valid], high[valid] - y[valid]],
+                marker=style["marker"],
+                markersize=3,
+                linestyle=style["linestyle"],
+                linewidth=1.2,
+                capsize=2,
+                color=PROTOCOL_COLORS[protocol],
+                label=f"{style['label']} ({PROTOCOL_LABELS[protocol]})",
+            )
+            for bar in bars:
+                bar.set_alpha(0.3)
+
     ax.axhline(0.5, color="gray", linestyle=":", linewidth=0.8, alpha=0.6)
     if categorical:
         ax.set_xticks(x_axis_values)
@@ -236,60 +242,52 @@ def plot_panel(
 
 
 def main() -> None:
-    """Generate the complexity-performance correlation figure."""
+    """Generate the combined complexity-performance figure."""
     args = parse_args()
     data = load_data(args.data_dir, args.treewidth_column)
     data = data[data["naming_strategy"] == args.naming_strategy].copy()
     if data.empty:
         raise ValueError(f"No rows for naming_strategy={args.naming_strategy!r}")
 
-    selected_metrics = (
-        ["accuracy", "answerability"] if args.metrics == "both" else [args.metrics]
-    )
-
     supported = data[data["llm_probability"] != -1000]
     treewidths = sorted(supported["treewidth"].dropna().unique())
 
     summaries: dict[tuple[str, str, str], pd.DataFrame] = {}
-    for metric in selected_metrics:
+    for metric in METRICS:
         for protocol in PROTOCOLS:
             protocol_df = supported[supported["experiment_type"] == protocol]
             summaries[(metric, protocol, "treewidth")] = binned_metrics(
                 protocol_df, "treewidth", treewidths, args.accuracy_threshold
             )
             summaries[(metric, protocol, "factor")] = binned_metrics(
-                protocol_df, "factor_size_bin", FACTOR_SIZE_LABELS, args.accuracy_threshold
+                protocol_df,
+                "factor_size_bin",
+                FACTOR_SIZE_LABELS,
+                args.accuracy_threshold,
             )
 
-    nrows = len(selected_metrics)
-    figsize = (FIGURE_SIZE[0], FIGURE_SIZE[1] * nrows / 2)
-    fig, axes = plt.subplots(nrows, 2, figsize=figsize, sharey=True, sharex=False)
-    fig.subplots_adjust(hspace=0.45)
-    axes = np.atleast_2d(axes)
+    fig, axes = plt.subplots(
+        1, 2, figsize=FIGURE_SIZE, sharey=True, sharex=False
+    )
+    fig.subplots_adjust(wspace=0.25)
 
     panels = [
         ("treewidth", "Treewidth", False),
         ("factor", "Total factor size", True),
     ]
-    for i, metric in enumerate(selected_metrics):
-        for (axis, xlabel, categorical), ax in zip(panels, axes[i], strict=True):
-            bins = treewidths if axis == "treewidth" else FACTOR_SIZE_LABELS
-            summary = {
-                protocol: summaries[(metric, protocol, axis)] for protocol in PROTOCOLS
-            }
-            plot_panel(ax, summary, metric, bins, categorical=categorical)
-            ax.set_xlabel(xlabel, fontsize=LABEL_FONT_SIZE, fontweight="bold")
-            if axis == "treewidth":
-                ax.set_ylabel(
-                    metric.capitalize(), fontsize=LABEL_FONT_SIZE, fontweight="bold"
-                )
-            ax.set_title(
-                f"{metric.capitalize()} vs {axis.replace('_', ' ')}",
-                fontsize=TITLE_FONT_SIZE,
-                fontweight="bold",
-            )
+    for (axis, xlabel, categorical), ax in zip(panels, axes, strict=True):
+        bins = treewidths if axis == "treewidth" else FACTOR_SIZE_LABELS
+        summary = {
+            (metric, protocol): summaries[(metric, protocol, axis)]
+            for metric in METRICS
+            for protocol in PROTOCOLS
+        }
+        plot_panel(ax, summary, bins, categorical=categorical)
+        ax.set_xlabel(xlabel, fontsize=LABEL_FONT_SIZE, fontweight="bold")
 
-    handles, labels = axes[0, 0].get_legend_handles_labels()
+    axes[0].set_ylabel("Proportion", fontsize=LABEL_FONT_SIZE, fontweight="bold")
+
+    handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(
         handles,
         labels,
@@ -297,10 +295,10 @@ def main() -> None:
         ncol=2,
         fontsize=LEGEND_FONT_SIZE,
         frameon=False,
-        bbox_to_anchor=(0.5, 1.04),
+        bbox_to_anchor=(0.5, 1.02),
     )
 
-    fig.tight_layout(rect=(0, 0, 1, 0.92))
+    fig.tight_layout(rect=(0, 0, 1, 0.88))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(args.output, bbox_inches="tight")
     jpeg_path = args.output.with_suffix(".jpg")
