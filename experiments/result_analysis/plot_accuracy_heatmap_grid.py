@@ -205,6 +205,14 @@ def create_heatmap_subplot(
         annot_kws={"size": ANNOT_FONT_SIZE, "color": "black"},
     )
 
+    # Cells with accuracy >= 0.75 sit on dark reds; use white text for them
+    for text in ax.texts:
+        try:
+            if float(text.get_text()) >= 0.75:
+                text.set_color("white")
+        except ValueError:
+            continue
+
     # Overlay black cells for N/A (all -1000)
     for i, j in na_cells:
         ax.add_patch(
