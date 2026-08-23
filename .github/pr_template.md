@@ -1,7 +1,22 @@
-## ✅ What's the PR about
+<!-- 
+General notes:
 
-<!-- A brief description of the changes in this PR. -->
+ * Dont break lines at 80 characters, let lines flow and the viewer will adjust 
 
-## 🤔 Why
+-->
 
-<!-- A brief description of the reason for these changes. -->
+## Summary
+
+<!-- What does this PR do? One or two sentences. -->
+
+## What changed
+
+<!-- Concrete changes: new files, moved files, renamed modules, API surface. -->
+
+## Why
+
+<!-- Motivation: why is this change needed? Link to an ADR or issue if applicable. -->
+
+## Testing
+
+<!-- How was this verified? Test count, manual checks, cross-validation. -->
